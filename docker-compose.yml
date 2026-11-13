@@ -3,8 +3,7 @@ services:
     image: python:3.11-slim
     volumes:
       - ./:/app
-      - blog-data3:/data
-      - sales-db3:/app-data
+      - payroll-data:/app-data
     working_dir: /app
     command: >
       sh -c "pip install --no-cache-dir -r requirements.txt &&
@@ -14,9 +13,11 @@ services:
       - FLASK_ENV=development
       - PYTHONUNBUFFERED=1
       - SALES_DATA_DIR=/app-data
+      - PAYROLL_NO_BROWSER=1
+      - PAYROLL_LICENSE_CHECK=0
+      - PAYROLL_MACHINE_SERIAL=9DE2-A652-843E-3352
+      - PORT=5003
 
 volumes:
-  blog-data3:
-    driver: local
-  sales-db3:
+  payroll-data:
     driver: local
