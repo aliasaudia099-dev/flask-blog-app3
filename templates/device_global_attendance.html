@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}حضور جميع أجهزة البصمة{% endblock %}
+{% block header %}سجلات الحضور البيومتري — جميع الأجهزة{% endblock %}
+{% block actions %}
+<a href="{{ url_for('devices') }}" class="btn btn-outline no-print">← الأجهزة</a>
+<button class="btn btn-outline no-print" onclick="window.print()">🖨️ طباعة</button>
+{% if current_user.role=='admin' %}
+<button class="btn btn-warning no-print" onclick="bulkApply()">📋 تطبيق الكل على المرتبات</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<!-- Filter bar -->
+<div class="card" style="padding:16px 20px;margin-bottom:16px;">
+    <form method="GET" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="form-group">
+            <label>الجهاز</label>
+            <select name="device_id" class="form-control">
+                <option value="">جميع الأجهزة</option>
+                {% for d in all_devices %}
+                <option value="{{ d.id }}" {{ 'selected' if request.args.get('device_id','') == d.id|string }}>
+                    {{ d.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>من تاريخ</label>
+            <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>إلى تاريخ</label>
+            <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>حالة المعالجة</label>
+            <select name="processed" class="form-control">
+                <option value="">الكل</option>
+                <option value="0" {{ 'selected' if request.args.get('processed')=='0' }}>جديد</option>
+                <option value="1" {{ 'selected' if request.args.get('processed')=='1' }}>معالج</option>
+                <option value="2" {{ 'selected' if request.args.get('processed')=='2' }}>مطبق</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>بحث بالاسم/كود</label>
+            <input type="text" name="search" value="{{ request.args.get('search','') }}"
+                   class="form-control" style="width:150px;" placeholder="اسم أو كود">
+        </div>
+        <button class="btn btn-primary">🔍 تصفية</button>
+        <a href="{{ url_for('device_global_attendance') }}" class="btn btn-outline">↺</a>
+    </form>
+</div>
+
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px;">
+    {% set pending = records|selectattr('processed','equalto',0)|list|length %}
+    {% set applied_cnt = records|selectattr('processed','equalto',2)|list|length %}
+    <div class="card" style="text-align:center;padding:12px;">
+        <div style="font-size:1.5rem;font-weight:700;">{{ records|length }}</div>
+        <div style="font-size:.8rem;color:#666;">إجمالي</div>
+    </div>
+    <div class="card" style="text-align:center;padding:12px;">
+        <div style="font-size:1.5rem;font-weight:700;color:#f59e0b;">{{ pending }}</div>
+        <div style="font-size:.8rem;color:#666;">جديد</div>
+    </div>
+    <div class="card" style="text-align:center;padding:12px;">
+        <div style="font-size:1.5rem;font-weight:700;color:#16a34a;">{{ applied_cnt }}</div>
+        <div style="font-size:.8rem;color:#666;">مطبق</div>
+    </div>
+    <div class="card" style="text-align:center;padding:12px;">
+        <div style="font-size:1.5rem;font-weight:700;color:#dc2626;">
+            {{ records|selectattr('emp_name','none')|list|length if records else 0 }}
+        </div>
+        <div style="font-size:.8rem;color:#666;">غير مرتبط</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h3>سجلات البيومتري ({{ records|length }})</h3></div>
+    <div class="card-body">
+        {% if records %}
+        <div class="table-wrap">
+            <table>
+                <thead><tr>
+                    <th>الجهاز</th><th>UID</th><th>الموظف</th>
+                    <th>التاريخ</th><th>الوقت</th><th>النوع</th><th>الحالة</th>
+                </tr></thead>
+                <tbody>
+                {% for r in records %}
+                <tr style="{{ 'background:#fff7ed;' if not r.emp_name else '' }}">
+                    <td>
+                        <a href="{{ url_for('device_detail', device_id=r.device_id) }}">
+                            {{ r.device_name }}
+                        </a>
+                    </td>
+                    <td class="number-cell">{{ r.device_uid }}</td>
+                    <td>
+                        {% if r.emp_name %}
+                            {{ r.emp_name }}
+                            <small style="color:#9ca3af;">({{ r.emp_code }})</small>
+                        {% else %}
+                            <span style="color:#ef4444;">⚠️ غير مرتبط</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.check_date }}</td>
+                    <td class="number-cell">{{ r.check_time }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'primary' if r.check_type=='check_in' else 'info' }}">
+                            {{ 'دخول' if r.check_type=='check_in' else 'خروج' }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ 'success' if r.processed==2 else 'warning' if r.processed==1 else 'secondary' }}">
+                            {{ 'مطبق' if r.processed==2 else 'معالج' if r.processed==1 else 'جديد' }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:40px;color:#9ca3af;">
+            <div style="font-size:3rem;">📭</div>
+            <h3>لا توجد سجلات</h3>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="toastMsg" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+     padding:14px 28px;border-radius:10px;z-index:9999;font-weight:600;color:#fff;
+     box-shadow:0 4px 12px rgba(0,0,0,.2);"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var CSRF = '{{ csrf_token() }}';
+
+function showToast(msg, ok){
+    var t = document.getElementById('toastMsg');
+    t.style.display='block';
+    t.style.background = ok ? '#16a34a' : '#dc2626';
+    t.textContent = msg;
+    clearTimeout(window._t);
+    window._t = setTimeout(()=>t.style.display='none', 5000);
+}
+
+function bulkApply(){
+    var month = prompt('تطبيق جميع الأجهزة على شهر (YYYY-MM):',
+        '{{ now.strftime("%Y-%m") if now else "" }}');
+    if(!month) return;
+    showToast('⏳ جارٍ التطبيق...', true);
+    // Apply for each device
+    var devices = {{ all_devices | map(attribute='id') | list | tojson }};
+    var promises = devices.map(id =>
+        fetch('/device/'+id+'/apply-attendance',{
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':CSRF},
+            body:'month='+month+'&overwrite=false'
+        }).then(r=>r.json())
+    );
+    Promise.all(promises).then(results => {
+        var total = results.reduce((s,d)=>s+(d.applied||0),0);
+        showToast('✅ تم تطبيق '+total+' سجل على شهر '+month, true);
+        setTimeout(()=>location.reload(), 2000);
+    }).catch(()=>showToast('❌ فشل التطبيق', false));
+}
+</script>
+{% endblock %}
+

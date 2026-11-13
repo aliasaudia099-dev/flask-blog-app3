@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}تقويم الحضور والغياب{% endblock %}
+{% block header %}تقويم الحضور والغياب{% endblock %}
+{% block actions %}
+<button class="btn btn-outline no-print" onclick="window.print()">🖨️ طباعة</button>
+{% endblock %}
+
+{% block content %}
+<div class="month-picker no-print">
+    <label style="font-weight:600;">الشهر:</label>
+    <input type="month" id="m" value="{{ month }}" onchange="goMonth(this.value)">
+    <label style="font-weight:600;margin-right:14px;">الموظف:</label>
+    <select id="empSel" onchange="goEmp(this.value)" style="min-width:250px;padding:6px;border:1px solid #d1d5db;border-radius:6px;">
+        <option value="">— كل الموظفين (ملخص) —</option>
+        {% for e in emps %}
+        <option value="{{ e.id }}" {{ 'selected' if sel and sel.id==e.id }}>{{ e.emp_code }} - {{ e.name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="card">
+    <div class="card-header"><h3>أيام الحضور والغياب لكل موظف — {{ month }}</h3>
+        <span class="badge badge-info">اضغط على أي موظف لعرض تقويمه</span></div>
+    <div class="card-body">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>#</th><th>الكود</th><th>الموظف</th><th>القسم</th>
+                        <th>أيام الحضور</th><th>أيام الغياب</th><th>بدون تسجيل</th>
+                        <th>تأخير</th><th>إجازة</th><th>مرضي</th><th>أيام العمل</th>
+                        <th class="no-print">التقويم</th></tr>
+                </thead>
+                <tbody>
+                    {% for e in emps %}
+                    {% set s = summary.get(e.id) %}
+                    <tr style="cursor:pointer;" class="{{ 'totals-row' if sel and sel.id==e.id }}" onclick="goEmp({{ e.id }})">
+                        <td>{{ loop.index }}</td>
+                        <td>{{ e.emp_code }}</td>
+                        <td><strong>{{ e.name }}</strong></td>
+                        <td>{{ e.dept_name or '-' }}</td>
+                        <td class="number-cell pos">{{ s.present_days if s else '-' }}</td>
+                        <td class="number-cell neg">{{ s.absent_days if s else '-' }}</td>
+                        <td class="number-cell">{{ s.missing_days if s else '-' }}</td>
+                        <td class="number-cell">{{ s.late_days if s else '-' }}</td>
+                        <td class="number-cell">{{ s.leave_days if s else '-' }}</td>
+                        <td class="number-cell">{{ s.sick_days if s else '-' }}</td>
+                        <td class="number-cell">{{ s.payable_days if s else '-' }}</td>
+                        <td class="no-print"><a href="?month={{ month }}&emp_id={{ e.id }}" class="btn btn-sm btn-outline">🗓️ عرض التقويم</a></td>
+                    </tr>
+                    {% endfor %}
+                    {% if not emps %}
+                    <tr><td colspan="12" class="empty-state"><div class="icon">👥</div><h3>لا يوجد موظفون نشطون</h3></td></tr>
+                    {% endif %}
+                </tbody>
+                {% if emps %}
+                <tfoot>
+                    <tr class="totals-row">
+                        <td colspan="4" style="text-align:center;">الإجمالي</td>
+                        <td class="number-cell pos">{{ summary.values()|map(attribute='present_days')|sum }}</td>
+                        <td class="number-cell neg">{{ summary.values()|map(attribute='absent_days')|sum }}</td>
+                        <td class="number-cell">{{ summary.values()|map(attribute='missing_days')|sum }}</td>
+                        <td class="number-cell">{{ summary.values()|map(attribute='late_days')|sum }}</td>
+                        <td class="number-cell">{{ summary.values()|map(attribute='leave_days')|sum }}</td>
+                        <td class="number-cell">{{ summary.values()|map(attribute='sick_days')|sum }}</td>
+                        <td class="number-cell">{{ summary.values()|map(attribute='payable_days')|sum }}</td>
+                        <td class="no-print"></td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+
+
+{% if sel %}
+<div class="card">
+    <div class="card-header">
+        <h3>تقويم {{ sel.name }} ({{ sel.emp_code }}) — {{ month }}</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            {% if sel_summary %}
+            <span class="badge badge-success">أيام الحضور: {{ sel_summary.present_days }}</span>
+            <span class="badge badge-danger">أيام الغياب: {{ sel_summary.absent_days }}</span>
+            <span class="badge badge-warning">بدون تسجيل: {{ sel_summary.missing_days }}</span>
+            <span class="badge badge-info">أيام العمل: {{ sel_summary.payable_days }}</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <table class="cal">
+            <thead>
+                <tr><th>السبت</th><th>الأحد</th><th>الاثنين</th><th>الثلاثاء</th><th>الأربعاء</th><th>الخميس</th><th>الجمعة</th></tr>
+            </thead>
+            <tbody>
+                {% for week in weeks %}
+                <tr>
+                    {% for cell in week %}
+                    {% if cell %}
+                    <td class="{{ cell.cls }}">
+                        <div class="d"><span>{{ cell.icon }}</span><span>{{ cell.day }}</span></div>
+                        <div class="lbl">{{ cell.label }}</div>
+                        {% if cell.cin %}<div class="tm">{{ cell.cin }} ← {{ cell.cout }}</div>{% endif %}
+                        {% if cell.note %}<div class="tm">{{ cell.note }}</div>{% endif %}
+                    </td>
+                    {% else %}<td class="cal-empty"></td>{% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="legend">
+            <span><i class="sw cal-present"></i> حاضر</span>
+            <span><i class="sw cal-late"></i> متأخر</span>
+            <span><i class="sw cal-absent"></i> غائب</span>
+            <span><i class="sw cal-missing"></i> بدون تسجيل{% if count_missing %} (يُخصم){% endif %}</span>
+            <span><i class="sw cal-leave"></i> إجازة</span>
+            <span><i class="sw cal-sick"></i> مرضي</span>
+            <span><i class="sw cal-off"></i> إجازة أسبوعية</span>
+            <span><i class="sw cal-future"></i> لم يأتِ بعد</span>
+        </div>
+
+        <div class="cal-note">
+            {% if count_missing %}
+            ⛔ قاعدة «بدون تسجيل = غياب» مفعّلة: الأيام الحمراء المتقطعة أيام عمل بلا سجل حضور وتُخصم من المرتب.
+            {% else %}
+            ✅ قاعدة «بدون تسجيل = غياب» معطّلة حالياً: الأيام الرمادية أيام بلا سجل حضور ولا تُخصم.
+            {% endif %}
+            — <a href="{{ url_for('attendance', month=month) }}">تسجيل/تعديل الحضور</a>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state"><div class="icon">🗓️</div><h3>اختر موظفاً لعرض تقويم الشهر</h3>
+            <p>اضغط على صف الموظف في الجدول أعلاه، أو اختره من قائمة «الموظف» بالأعلى.</p></div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.cal{width:100%;border-collapse:separate;border-spacing:6px;}
+.cal th{background:var(--gray-100);color:var(--gray-800);padding:8px 4px;border-radius:7px;font-size:.8rem;text-align:center;}
+.cal td{border:1px solid var(--gray-200);border-radius:9px;padding:6px;height:78px;vertical-align:top;font-size:.72rem;color:#374151;}
+.cal td.cal-empty{border:none;background:transparent;}
+.cal .d{display:flex;justify-content:space-between;font-weight:700;font-size:.85rem;margin-bottom:4px;}
+.cal .lbl{line-height:1.5;}
+.cal .tm{color:#6b7280;font-size:.68rem;margin-top:3px;}
+.cal-present{background:#dcfce7;border-color:#86efac;color:#166534;}
+.cal-late{background:#fef3c7;border-color:#fcd34d;color:#92400e;}
+.cal-absent{background:#fee2e2;border-color:#fca5a5;color:#991b1b;}
+.cal-missing{background:#ffe4e6;border:1px dashed #fb7185;color:#9f1239;}
+.cal-leave{background:#dbeafe;border-color:#93c5fd;color:#1e40af;}
+.cal-sick{background:#ede9fe;border-color:#c4b5fd;color:#5b21b6;}
+.cal-nosign{background:#f3f4f6;border:1px dashed #9ca3af;color:#6b7280;}
+.cal-off{background:var(--gray-100);border:1px dotted #9ca3af;color:#6b7280;}
+.cal-future{background:#f9fafb;border:1px dotted #d1d5db;color:#9ca3af;}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:.78rem;color:var(--gray-600);}
+.legend .sw{display:inline-block;width:13px;height:13px;border-radius:4px;border:1px solid #d1d5db;margin-left:5px;vertical-align:-2px;}
+.legend .sw.cal-missing,.legend .sw.cal-nosign{border-style:dashed;}
+.cal-note{margin-top:12px;font-size:.8rem;color:var(--gray-600);line-height:1.8;}
+@media print{.month-picker{display:none;}}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function goMonth(v){
+    var e = document.getElementById('empSel').value;
+    window.location.href = '?month=' + v + (e ? ('&emp_id=' + e) : '');
+}
+function goEmp(v){
+    window.location.href = '?month={{ month }}' + (v ? ('&emp_id=' + v) : '');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}تعديل جهاز - {{ device.name }}{% endblock %}
+{% block header %}تعديل جهاز: {{ device.name }}{% endblock %}
+{% block actions %}
+<a href="{{ url_for('devices') }}" class="btn btn-outline no-print">← الأجهزة</a>
+<a href="{{ url_for('device_detail', device_id=device.id) }}" class="btn btn-outline no-print">📊 تفاصيل</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:700px;margin:0 auto;">
+    <div class="card-header">
+        <h3>✏️ تعديل بيانات الجهاز</h3>
+        <small style="color:#666;">
+            الحالة: 
+            <span class="badge badge-{{ 'success' if device.status=='connected' else 'danger' if device.status=='connection_failed' else 'warning' }}">
+                {{ {'connected':'متصل','disconnected':'غير متصل','connection_failed':'فشل الاتصال','error':'خطأ'}.get(device.status, device.status) }}
+            </span>
+            | آخر مزامنة: {{ device.last_sync or 'لم تتم بعد' }}
+        </small>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('device_edit', device_id=device.id) }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+            <div class="form-row">
+                <div class="form-group" style="flex:2">
+                    <label>اسم الجهاز <span style="color:red">*</span></label>
+                    <input type="text" name="name" required class="form-control"
+                           value="{{ device.name }}">
+                </div>
+                <div class="form-group">
+                    <label>النوع</label>
+                    <select name="device_type" class="form-control">
+                        {% for t in ['zkteco','anviz','hikvision','other'] %}
+                        <option value="{{ t }}" {{ 'selected' if device.device_type==t }}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex:2">
+                    <label>عنوان IP <span style="color:red">*</span></label>
+                    <input type="text" name="ip_address" required class="form-control"
+                           value="{{ device.ip_address }}">
+                </div>
+                <div class="form-group">
+                    <label>المنفذ</label>
+                    <input type="number" name="port" value="{{ device.port or 4370 }}" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>مفتاح الاتصال</label>
+                    <input type="number" name="comm_key" value="{{ device.comm_key or 0 }}" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex:2">
+                    <label>الموقع</label>
+                    <input type="text" name="location" class="form-control"
+                           value="{{ device.location or '' }}">
+                </div>
+                <div class="form-group">
+                    <label>الرقم التسلسلي</label>
+                    <input type="text" name="serial_number" class="form-control"
+                           value="{{ device.serial_number or '' }}">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الحالة</label>
+                    <select name="status" class="form-control">
+                        <option value="disconnected" {{ 'selected' if device.status=='disconnected' }}>غير متصل</option>
+                        <option value="connected"    {{ 'selected' if device.status=='connected' }}>متصل</option>
+                        <option value="maintenance"  {{ 'selected' if device.status=='maintenance' }}>صيانة</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>مفعّل</label>
+                    <select name="active" class="form-control">
+                        <option value="1" {{ 'selected' if device.active }}>نعم</option>
+                        <option value="0" {{ 'selected' if not device.active }}>لا</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>ملاحظات</label>
+                <textarea name="notes" class="form-control" rows="2">{{ device.notes or '' }}</textarea>
+            </div>
+
+            <!-- Test ping inline -->
+            <div id="testResult" style="display:none;padding:12px;border-radius:8px;margin-bottom:12px;"></div>
+
+            <div style="display:flex;gap:12px;margin-top:16px;">
+                <button type="button" class="btn btn-outline" onclick="testConn()">🔍 اختبار الاتصال</button>
+                <button type="submit" class="btn btn-primary">💾 حفظ التعديلات</button>
+                <a href="{{ url_for('devices') }}" class="btn btn-outline">إلغاء</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Danger zone -->
+{% if current_user.role == 'admin' %}
+<div class="card" style="max-width:700px;margin:16px auto;border:2px solid #fee2e2;">
+    <div class="card-header" style="background:#fee2e2;">
+        <h3 style="color:#dc2626;">⚠️ منطقة الخطر</h3>
+    </div>
+    <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;">
+        <form method="POST" action="{{ url_for('device_delete', device_id=device.id) }}"
+              onsubmit="return confirm('هل أنت متأكد من حذف الجهاز؟ سيتم حذف جميع سجلات الحضور المرتبطة به.')">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger">🗑️ حذف الجهاز نهائياً</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function testConn(){
+    var ip = document.querySelector('[name="ip_address"]').value;
+    var port = document.querySelector('[name="port"]').value;
+    var box = document.getElementById('testResult');
+    if(!ip){alert('أدخل عنوان IP أولاً');return;}
+    box.style.display='block';
+    box.style.background='#fef3c7';
+    box.textContent='⏳ جارٍ اختبار الاتصال...';
+    fetch('/device/test-ping',{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':'{{ csrf_token() }}'},
+        body:'ip='+encodeURIComponent(ip)+'&port='+encodeURIComponent(port)
+    }).then(r=>r.json()).then(data=>{
+        box.style.background = data.ok ? '#dcfce7' : '#fee2e2';
+        box.textContent = (data.ok ? '✅ ' : '❌ ') + data.message;
+    }).catch(()=>{box.style.background='#fee2e2';box.textContent='❌ خطأ في الشبكة';});
+}
+</script>
+{% endblock %}
+

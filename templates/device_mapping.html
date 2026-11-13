@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}ربط الموظفين - {{ device.name }}{% endblock %}
+{% block header %}ربط الموظفين بالجهاز: {{ device.name }}{% endblock %}
+{% block actions %}
+<a href="{{ url_for('device_detail', device_id=device.id) }}" class="btn btn-outline no-print">← تفاصيل الجهاز</a>
+<a href="{{ url_for('device_attendance', device_id=device.id) }}" class="btn btn-outline no-print">📋 السجلات</a>
+<button class="btn btn-primary no-print" onclick="openModal('mapModal')">+ ربط يدوي</button>
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats bar -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;">
+    <div class="card" style="text-align:center;padding:16px;">
+        <div style="font-size:1.8rem;color:#2563eb;">{{ mappings|length }}</div>
+        <div style="font-size:.85rem;color:#666;">إجمالي الربط</div>
+    </div>
+    <div class="card" style="text-align:center;padding:16px;">
+        <div style="font-size:1.8rem;color:#f59e0b;">{{ unmapped_uids|length }}</div>
+        <div style="font-size:.85rem;color:#666;">UIDs غير مرتبطة</div>
+    </div>
+    <div class="card" style="text-align:center;padding:16px;">
+        <div style="font-size:1.8rem;color:#16a34a;">{{ all_employees|length }}</div>
+        <div style="font-size:.85rem;color:#666;">موظفين نشطين</div>
+    </div>
+</div>
+
+<!-- Unmapped UIDs alert -->
+{% if unmapped_uids %}
+<div class="card" style="border:2px solid #f59e0b;margin-bottom:20px;">
+    <div class="card-header" style="background:#fef3c7;display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="color:#92400e;">⚠️ معرفات غير مرتبطة بموظفين ({{ unmapped_uids|length }})</h3>
+        <button class="btn btn-sm btn-warning no-print" onclick="autoMap()">🔄 ربط تلقائي</button>
+    </div>
+    <div class="card-body">
+        <div class="table-wrap">
+            <table>
+                <thead><tr>
+                    <th>معرف الجهاز (UID)</th>
+                    <th>عدد السجلات</th>
+                    <th>آخر بصمة</th>
+                    <th>الموظف المقترح</th>
+                    <th>إجراء</th>
+                </tr></thead>
+                <tbody>
+                {% for u in unmapped_uids %}
+                <tr>
+                    <td class="number-cell"><strong>{{ u.device_uid }}</strong></td>
+                    <td class="number-cell">{{ u.records_count }}</td>
+                    <td>{{ u.last_seen or '-' }}</td>
+                    <td>
+                        {% if u.suggested_emp %}
+                        <span style="color:#16a34a;">{{ u.suggested_emp.name }} ({{ u.suggested_emp.emp_code }})</span>
+                        {% else %}
+                        <span style="color:#9ca3af;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('device_map_employee', device_id=device.id) }}"
+                              style="display:flex;gap:6px;align-items:center;">
+                            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                            <input type="hidden" name="device_uid" value="{{ u.device_uid }}">
+                            <select name="employee_id" class="form-control" style="width:180px;" required>
+                                <option value="">— اختر موظفاً —</option>
+                                {% for emp in all_employees %}
+                                <option value="{{ emp.id }}"
+                                    {{ 'selected' if u.suggested_emp and u.suggested_emp.id==emp.id }}>
+                                    {{ emp.name }} ({{ emp.emp_code }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <input type="hidden" name="apply_pending" value="1">
+                            <button type="submit" class="btn btn-sm btn-primary">ربط</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Existing mappings -->
+<div class="card">
+    <div class="card-header"><h3>🔗 الربط الحالي ({{ mappings|length }})</h3></div>
+    <div class="card-body">
+        {% if mappings %}
+        <!-- Filter -->
+        <div style="margin-bottom:12px;">
+            <input type="text" id="mappingSearch" class="form-control" style="max-width:300px;"
+                   placeholder="بحث بالاسم أو الكود..." oninput="filterMappings()">
+        </div>
+        <div class="table-wrap">
+            <table id="mappingTable">
+                <thead><tr>
+                    <th>معرف الجهاز (UID)</th>
+                    <th>الموظف</th>
+                    <th>كود الموظف</th>
+                    <th>القسم</th>
+                    <th>تاريخ الربط</th>
+                    <th>سجلات الحضور</th>
+                    <th>إجراءات</th>
+                </tr></thead>
+                <tbody>
+                {% for m in mappings %}
+                <tr class="mapping-row">
+                    <td class="number-cell"><strong>{{ m.device_uid }}</strong></td>
+                    <td>{{ m.emp_name }}</td>
+                    <td class="number-cell">{{ m.emp_code }}</td>
+                    <td>{{ m.dept_name or '-' }}</td>
+                    <td>{{ m.mapped_at[:10] if m.mapped_at else '-' }}</td>
+                    <td class="number-cell">{{ m.att_count or 0 }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('device_unmap_employee', device_id=device.id) }}"
+                              style="display:inline"
+                              onsubmit="return confirm('إزالة الربط بين {{ m.device_uid }} و{{ m.emp_name }}؟')">
+                            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                            <input type="hidden" name="device_uid" value="{{ m.device_uid }}">
+                            <button class="btn btn-sm btn-danger">فك الربط</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:30px;color:#9ca3af;">
+            <div style="font-size:2rem;">🔗</div>
+            <p>لا يوجد ربط بعد. استخدم "اتصال" من الجهاز لمزامنة المستخدمين تلقائياً.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Manual map modal -->
+<div class="modal" id="mapModal">
+    <div class="modal-content" style="max-width:450px;">
+        <span class="close" onclick="closeModal('mapModal')">&times;</span>
+        <h3>➕ ربط يدوي</h3>
+        <form method="POST" action="{{ url_for('device_map_employee', device_id=device.id) }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label>معرف الجهاز (UID) <span style="color:red">*</span></label>
+                <input type="text" name="device_uid" required class="form-control" placeholder="مثال: 1 أو EMP001">
+            </div>
+            <div class="form-group">
+                <label>الموظف <span style="color:red">*</span></label>
+                <select name="employee_id" required class="form-control">
+                    <option value="">— اختر —</option>
+                    {% for emp in all_employees %}
+                    <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.emp_code }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="apply_pending" value="1" checked>
+                    تطبيق السجلات المعلقة لهذا UID
+                </label>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <button type="submit" class="btn btn-primary">ربط</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('mapModal')">إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="autoMapResult" style="display:none;padding:12px;border-radius:6px;margin-top:12px;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openModal(id){ document.getElementById(id).style.display='block'; }
+function closeModal(id){ document.getElementById(id).style.display='none'; }
+window.onclick = function(e){ if(e.target.classList.contains('modal')) e.target.style.display='none'; }
+
+function filterMappings(){
+    var val = document.getElementById('mappingSearch').value.toLowerCase();
+    document.querySelectorAll('#mappingTable .mapping-row').forEach(function(row){
+        row.style.display = row.textContent.toLowerCase().includes(val) ? '' : 'none';
+    });
+}
+
+function autoMap(){
+    if(!confirm('مزامنة تلقائية: ربط UIDs المتطابقة مع أكواد الموظفين؟')) return;
+    var box = document.getElementById('autoMapResult');
+    box.style.display='block'; box.style.background='#fef3c7'; box.textContent='⏳ جارٍ الربط التلقائي...';
+    fetch('/device/{{ device.id }}/sync-users',{
+        method:'POST',
+        headers:{'X-CSRFToken':'{{ csrf_token() }}'}
+    }).then(r=>r.json()).then(d=>{
+        box.style.background = d.ok ? '#dcfce7' : '#fee2e2';
+        box.textContent = d.ok
+            ? '✅ ربط '+d.synced+' موظف، إنشاء '+d.created+' جديد من أصل '+d.total+' مستخدم'
+            : '❌ '+d.error;
+        if(d.ok) setTimeout(()=>location.reload(), 1500);
+    }).catch(()=>{ box.style.background='#fee2e2'; box.textContent='❌ فشل'; });
+}
+</script>
+{% endblock %}
+

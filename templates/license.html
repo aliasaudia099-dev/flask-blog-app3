@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>حالة الترخيص</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background:#f1f5f9; padding:40px; }
+    .card { max-width:640px; margin:auto; background:#fff; border-radius:12px; padding:28px;
+            box-shadow:0 6px 20px rgba(0,0,0,.08); }
+    h1 { margin-top:0; font-size:20px; color:#1e3a5f; }
+    .ok   { color:#16a34a; font-weight:700; }
+    .bad  { color:#dc2626; font-weight:700; }
+    code  { background:#f1f5f9; padding:4px 8px; border-radius:6px; direction:ltr;
+            display:inline-block; font-size:15px; }
+    .row  { margin:10px 0; }
+    .lbl  { color:#64748b; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>حالة ترخيص النظام</h1>
+    {% if ok %}
+      <p class="ok">✔ الترخيص سليم</p>
+    {% else %}
+      <p class="bad">✘ {{ msg }}</p>
+    {% endif %}
+
+    <div class="row"><span class="lbl">الرقم التسلسلي للجهاز:</span><br>
+      <code>{{ info.serial }}</code></div>
+
+    {% if info.customer %}
+      <div class="row"><span class="lbl">العميل:</span> {{ info.customer }}</div>
+    {% endif %}
+    {% if info.expires %}
+      <div class="row"><span class="lbl">تاريخ الانتهاء:</span> {{ info.expires }}</div>
+    {% endif %}
+    {% if info.max_users %}
+      <div class="row"><span class="lbl">أقصى عدد مستخدمين:</span> {{ info.max_users }}</div>
+    {% endif %}
+
+    <div class="row"><span class="lbl">مسار ملف الترخيص:</span><br>
+      <code>{{ license_path }}</code></div>
+
+    {% if not ok %}
+      <p style="margin-top:18px;color:#475569;font-size:14px">
+        أرسل الرقم التسلسلي أعلاه إلى المبرمج لاستلام مفتاح الترخيص،
+        ثم ضعه في ملف <code>license.key</code> بجانب التطبيق وأعد التشغيل.
+      </p>
+    {% endif %}
+  </div>
+  <div style="text-align:center;margin-top:10px;font-size:.72rem;color:#b0b8c4;">
+        جميع الحقوق محفوظة © 2026 م/ شاكر على 01551606457
+    </div>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>كشف وحساب المرتب الشهري - الهاتف</title>
+<style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; margin: 0; padding: 16px; min-height: 100vh; direction: rtl; color: #1f2937; }
+    .container { max-width: 500px; margin: 0 auto; }
+
+    /* Mobile Navigation Bar */
+    .mobile-nav { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .mobile-nav::-webkit-scrollbar { display: none; }
+    .nav-btn { flex: 1; min-width: 105px; text-align: center; padding: 10px 6px; border-radius: 10px; background: white; color: #4b5563; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; white-space: nowrap; }
+    .nav-btn.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(102,126,234,0.35); }
+
+    .header-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 16px; box-shadow: 0 8px 20px rgba(102,126,234,0.25); }
+    .header-card h1 { margin: 0; font-size: 20px; }
+    .header-card p { margin: 4px 0 0; opacity: 0.9; font-size: 13px; }
+
+    /* Month Navigator */
+    .month-nav-card { background: white; padding: 12px 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #f0f0f0; }
+    .nav-arrow { text-decoration: none; background: #f3f4f6; color: #374151; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: bold; transition: all 0.2s; }
+    .nav-arrow:hover { background: #e5e7eb; }
+    .cur-month { font-size: 16px; font-weight: bold; color: #667eea; display: flex; align-items: center; gap: 6px; }
+
+    /* Net Salary Hero Card */
+    .net-hero { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 24px 20px; border-radius: 16px; text-align: center; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(16,185,129,0.3); position: relative; overflow: hidden; }
+    .net-hero::after { content: "💰"; position: absolute; left: -10px; bottom: -15px; font-size: 90px; opacity: 0.15; }
+    .net-title { font-size: 14px; opacity: 0.95; margin-bottom: 6px; }
+    .net-amount { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
+    .net-currency { font-size: 16px; font-weight: 600; margin-right: 4px; }
+    .net-badges { display: flex; justify-content: center; gap: 8px; margin-top: 12px; }
+    .badge-hero { background: rgba(255,255,255,0.22); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+
+    /* Overview Cards */
+    .overview-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+    .overview-box { background: white; padding: 14px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; }
+    .overview-box .title { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+    .overview-box .val { font-size: 18px; font-weight: bold; }
+    .val-gross { color: #2563eb; }
+    .val-ded { color: #dc2626; }
+
+    /* Breakdown Section Card */
+    .section-card { background: white; border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; }
+    .section-title { font-size: 15px; font-weight: bold; color: #111827; margin: 0 0 12px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 8px; }
+    .section-total { font-size: 14px; font-weight: bold; }
+    
+    .breakdown-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f9fafb; font-size: 13.5px; }
+    .breakdown-row:last-child { border-bottom: none; }
+    .row-label { color: #4b5563; }
+    .row-val { font-weight: 600; color: #111827; }
+    .row-val.pos { color: #059669; }
+    .row-val.neg { color: #dc2626; }
+
+    /* Action Buttons */
+    .actions-card { background: white; padding: 16px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 16px; border: 1px solid #f0f0f0; display: flex; flex-direction: column; gap: 10px; }
+    .btn-pdf { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px; background: #2563eb; color: white; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 12px rgba(37,99,235,0.25); text-align: center; }
+    .btn-pdf:hover { background: #1d4ed8; }
+
+    /* Signature Section */
+    .signature-card { background: white; padding: 16px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 16px; border: 1px solid #f0f0f0; }
+    .signed-badge { background: #dcfce7; color: #166534; padding: 12px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .sign-form { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .btn-sign { padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; }
+
+    .empty-state { background: white; padding: 40px 20px; border-radius: 14px; text-align: center; color: #6b7280; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 16px; }
+    .empty-state .icon { font-size: 45px; margin-bottom: 10px; }
+
+    .notice-card { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 10px 14px; border-radius: 8px; font-size: 12px; text-align: center; margin-bottom: 20px; }
+    .alert { padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+    .alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+</style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav">
+        <a href="{{ url_for('mobile_attendance') }}" class="nav-btn">📱 تسجيل الحضور</a>
+        <a href="{{ url_for('mobile_records') }}" class="nav-btn">📋 سجل الحضور</a>
+        <a href="{{ url_for('mobile_calendar') }}" class="nav-btn">📅 تقويم الحضور</a>
+        <a href="{{ url_for('mobile_payslip') }}" class="nav-btn active">💰 كشف المرتب</a>
+    </div>
+
+    {% with messages=get_flashed_messages(with_categories=true) %}
+        {% for cat,msg in messages %}
+            <div class="alert alert-{{ 'danger' if cat=='error' else 'success' }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="header-card">
+        <h1>💰 كشف وحساب المرتب الشهري</h1>
+        <p>مفردات الراتب والمستحقات والاستقطاعات الشهرية</p>
+    </div>
+
+    <!-- Month Navigator -->
+    <div class="month-nav-card">
+        <a href="{{ url_for('mobile_payslip', month=prev_month) }}" class="nav-arrow">← الشهر السابق</a>
+        <div class="cur-month">🗓️ {{ month }}</div>
+        <a href="{{ url_for('mobile_payslip', month=next_month) }}" class="nav-arrow">الشهر التالي →</a>
+    </div>
+
+    {% if rec %}
+        <!-- Net Salary Hero -->
+        <div class="net-hero">
+            <div class="net-title">صافي المرتب المستحق لشهر {{ month }}</div>
+            <div class="net-amount">
+                {{ "{:,.2f}".format(rec.net or 0.0) }} <span class="net-currency">{{ settings.currency or 'ج.م' }}</span>
+            </div>
+            <div class="net-badges">
+                <span class="badge-hero">كود: {{ emp.emp_code }}</span>
+                <span class="badge-hero">{{ emp.name }}</span>
+                {% if signed %}
+                <span class="badge-hero" style="background:#065f46;">تم التوقيع بنجاح ✅</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Gross & Deductions Summary -->
+        <div class="overview-grid">
+            <div class="overview-box">
+                <div class="title">إجمالي المستحق (الراتب الشامل)</div>
+                <div class="val val-gross">{{ "{:,.2f}".format(rec.gross or 0.0) }}</div>
+            </div>
+            <div class="overview-box">
+                <div class="title">إجمالي الاستقطاعات والخصم</div>
+                <div class="val val-ded">{{ "{:,.2f}".format(rec.total_deductions or 0.0) }}</div>
+            </div>
+        </div>
+
+        <!-- Earnings Breakdown -->
+        <div class="section-card">
+            <div class="section-title">
+                <span>📈 تفاصيل المستحقات والأرباح</span>
+                <span class="section-total val-gross">+ {{ "{:,.2f}".format(rec.gross or 0.0) }}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="row-label">الراتب الأساسي</span>
+                <span class="row-val">{{ "{:,.2f}".format(rec.base or 0.0) }}</span>
+            </div>
+            {% if rec.allowances %}
+            <div class="breakdown-row">
+                <span class="row-label">مجموع البدلات</span>
+                <span class="row-val pos">+ {{ "{:,.2f}".format(rec.allowances or 0.0) }}</span>
+            </div>
+            {% endif %}
+            {% if rec.overtime_amt %}
+            <div class="breakdown-row">
+                <span class="row-label">أجر العمل الإضافي ({{ rec.overtime_hours or 0 }} ساعة)</span>
+                <span class="row-val pos">+ {{ "{:,.2f}".format(rec.overtime_amt or 0.0) }}</span>
+            </div>
+            {% endif %}
+            {% if rec.commissions %}
+            <div class="breakdown-row">
+                <span class="row-label">العمولات والمكافآت</span>
+                <span class="row-val pos">+ {{ "{:,.2f}".format(rec.commissions or 0.0) }}</span>
+            </div>
+            {% endif %}
+            {% if rec.bonus %}
+            <div class="breakdown-row">
+                <span class="row-label">حوافز إضافية</span>
+                <span class="row-val pos">+ {{ "{:,.2f}".format(rec.bonus or 0.0) }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Deductions Breakdown -->
+        <div class="section-card">
+            <div class="section-title">
+                <span>📉 تفاصيل الاستقطاعات والخصومات</span>
+                <span class="section-total val-ded">- {{ "{:,.2f}".format(rec.total_deductions or 0.0) }}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="row-label">التأمينات الاجتماعية (حصة الموظف)</span>
+                <span class="row-val neg">- {{ "{:,.2f}".format(rec.si_employee or 0.0) }}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="row-label">ضريبة كسب العمل</span>
+                <span class="row-val neg">- {{ "{:,.2f}".format(rec.income_tax or 0.0) }}</span>
+            </div>
+            {% if rec.advance_installments %}
+            <div class="breakdown-row">
+                <span class="row-label">أقساط السلف المستردة</span>
+                <span class="row-val neg">- {{ "{:,.2f}".format(rec.advance_installments or 0.0) }}</span>
+            </div>
+            {% endif %}
+            {% if rec.absence_deduction %}
+            <div class="breakdown-row">
+                <span class="row-label">خصم أيام الغياب ({{ rec.absent_days or 0 }} يوم)</span>
+                <span class="row-val neg">- {{ "{:,.2f}".format(rec.absence_deduction or 0.0) }}</span>
+            </div>
+            {% endif %}
+            {% if rec.late_deduction %}
+            <div class="breakdown-row">
+                <span class="row-label">خصم التأخير ({{ rec.late_days or 0 }} يوم)</span>
+                <span class="row-val neg">- {{ "{:,.2f}".format(rec.late_deduction or 0.0) }}</span>
+            </div>
+            {% endif %}
+            {% if rec.other_deductions %}
+            <div class="breakdown-row">
+                <span class="row-label">خصومات وجزاءات أخرى</span>
+                <span class="row-val neg">- {{ "{:,.2f}".format(rec.other_deductions or 0.0) }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Attendance Stats -->
+        <div class="section-card">
+            <div class="section-title">
+                <span>⏱️ إحصائيات الدوام المرتبطة بالراتب</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="row-label">أيام الحضور الفعلي</span>
+                <span class="row-val" style="color:#059669;">{{ rec.present_days or 0 }} يوم</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="row-label">أيام الغياب</span>
+                <span class="row-val" style="color:#dc2626;">{{ rec.absent_days or 0 }} يوم</span>
+            </div>
+            {% if rec.overtime_hours %}
+            <div class="breakdown-row">
+                <span class="row-label">ساعات العمل الإضافي</span>
+                <span class="row-val">{{ rec.overtime_hours }} ساعة</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Actions Card -->
+        <div class="actions-card">
+            <a href="{{ url_for('mobile_payslip_pdf', month=month) }}" target="_blank" class="btn-pdf">
+                📄 تحميل وطباعة مفردات المرتب (PDF)
+            </a>
+        </div>
+
+        <!-- Digital Signature Card -->
+        <div class="signature-card">
+            <div class="section-title">
+                <span>✍️ توقيع استلام مفردات الراتب</span>
+            </div>
+            {% if signed %}
+                <div class="signed-badge">
+                    ✅ تم تسجيل توقيعك على استلام راتب شهر {{ month }}
+                </div>
+            {% else %}
+                <form method="POST" action="{{ url_for('mobile_payslip_sign') }}" class="sign-form">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <div style="font-size:13px; color:#4b5563;">
+                        أقر باستلامي كشف مفردات راتب شهر {{ month }} بمبلغ صافي: <strong>{{ "{:,.2f}".format(rec.net or 0.0) }} {{ settings.currency or 'ج.م' }}</strong>
+                    </div>
+                    <input type="text" name="signature_text" class="form-control" value="{{ emp.name }}" placeholder="اسمك كتوقيع إلكتروني" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; width:100%;">
+                    <button type="submit" class="btn-sign">تأكيد توقيع الاستلام إلكترونياً</button>
+                </form>
+            {% endif %}
+        </div>
+
+    {% else %}
+        <div class="empty-state">
+            <div class="icon">💼</div>
+            <div style="font-weight:bold; font-size:16px; margin-bottom:6px; color:#111827;">لا يوجد كشف مرتبات مسجل</div>
+            <div style="font-size:13px; max-width:320px; margin:0 auto; line-height:1.5;">
+                لم يتم احتساب أو اعتماد كشف المرتبات لشهر {{ month }} بعد. يرجى مراجعة إدارة الموارد البشرية أو اختيار شهر سابق.
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="notice-card">
+        🔒 كشف المرتبات هذا مشفر وخاص بحسابك فقط، ولا يمكن لأي موظف آخر الاطلاع على تفاصيل راتبك
+    </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>تسجيل الحضور - نظام الحضور عبر الهاتف</title>
+<style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; margin: 0; padding: 20px; min-height: 100vh; direction: rtl; }
+    .container { max-width: 500px; margin: 0 auto; }
+    .header-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
+    .header-card h1 { margin: 0; font-size: 22px; }
+    .header-card p { margin: 5px 0 0; opacity: 0.9; font-size: 14px; }
+    .emp-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .emp-info { display: flex; justify-content: space-between; margin-bottom: 15px; }
+    .emp-name { font-size: 18px; font-weight: bold; color: #333; }
+    .emp-code { font-size: 14px; color: #666; }
+    .attendance-btn { width: 100%; padding: 18px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 12px; transition: all 0.3s; }
+    .btn-checkin { background: #10b981; color: white; box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
+    .btn-checkin:hover:not(:disabled) { background: #059669; }
+    .btn-checkout { background: #ef4444; color: white; box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
+    .btn-checkout:hover:not(:disabled) { background: #dc2626; }
+    .btn-disabled, .attendance-btn:disabled { background: #9ca3af !important; color: white !important; cursor: not-allowed !important; opacity: 0.65; box-shadow: none !important; transform: none !important; }
+    .attendance-status { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .status-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+    .status-item:last-child { border-bottom: none; }
+    .status-label { color: #666; }
+    .status-value { font-weight: bold; }
+    .status-present { color: #10b981; }
+    .status-absent { color: #ef4444; }
+    .gps-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .gps-card h3 { margin-top: 0; color: #333; font-size: 16px; }
+    .gps-info { display: flex; justify-content: space-between; margin: 10px 0; font-size: 14px; }
+    .gps-value { font-weight: bold; color: #667eea; }
+    .gps-consent { margin-top: 15px; }
+    .gps-consent label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+    .gps-consent input { accent-color: #667eea; }
+    /* GPS Box Status */
+    .gps-box { padding: 12px 14px; border-radius: 10px; margin-top: 14px; font-size: 13px; line-height: 1.5; border: 1px solid; display: flex; flex-direction: column; gap: 6px; }
+    .gps-box.waiting { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+    .gps-box.ok { background: #dcfce7; color: #166534; border-color: #86efac; }
+    .gps-box.bad { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+    .gps-header { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 13.5px; }
+    .gps-desc { font-size: 12px; opacity: 0.9; }
+    .btn-retry-gps { align-self: flex-start; margin-top: 4px; padding: 4px 10px; background: #991b1b; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
+    .btn-retry-gps:hover { background: #7f1d1d; }
+
+    .btn-logout { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #ef4444; color: white; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+    .btn-logout:hover { background: #dc2626; }
+    .alert { padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+    .alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    .face-verify { margin-top: 15px; text-align: center; }
+    .face-btn { background: #8b5cf6; color: white; padding: 12px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+    .face-btn:hover { background: #7c3aed; }
+    /* Mobile Navigation Bar */
+    .mobile-nav { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .mobile-nav::-webkit-scrollbar { display: none; }
+    .nav-btn { flex: 1; min-width: 105px; text-align: center; padding: 10px 6px; border-radius: 10px; background: white; color: #4b5563; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; white-space: nowrap; }
+    .nav-btn.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(102,126,234,0.35); }
+</style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav">
+        <a href="{{ url_for('mobile_attendance') }}" class="nav-btn active">📱 تسجيل الحضور</a>
+        <a href="{{ url_for('mobile_records') }}" class="nav-btn">📋 سجل الحضور</a>
+        <a href="{{ url_for('mobile_calendar') }}" class="nav-btn">📅 تقويم الحضور</a>
+        <a href="{{ url_for('mobile_payslip') }}" class="nav-btn">💰 كشف المرتب</a>
+    </div>
+    {% with messages=get_flashed_messages(with_categories=true) %}
+        {% for cat,msg in messages %}
+            <div class="alert alert-{{ 'danger' if cat=='error' else 'success' if cat=='success' else 'warning' }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="header-card">
+        <h1>📱 تسجيل الحضور والانصراف</h1>
+        <p>نظام الحضور المباشر عبر الهاتف مع التحقق من الموقع الجغرافي</p>
+    </div>
+
+    <div class="emp-card">
+        <div class="emp-info">
+            <div class="emp-name">{{ emp.name }}</div>
+            <div class="emp-code">الكود: {{ emp.emp_code }}</div>
+        </div>
+        <div style="font-size:14px; color:#666;">
+            القسم: {{ emp.department or '-' }} | المنصب: {{ emp.position or '-' }}
+        </div>
+    </div>
+
+    <div class="attendance-status">
+        <h3 style="margin-top:0; color:#333;">حالة الحضور اليوم</h3>
+        {% if attendance %}
+        <div class="status-item">
+            <span class="status-label">تاريخ التسجيل</span>
+            <span class="status-value">{{ attendance.date }}</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">وقت الحضور</span>
+            <span class="status-value {{ 'status-present' if attendance.check_in else 'status-absent' }}">
+                {{ attendance.check_in or 'غير مسجل' }}
+            </span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">وقت الانصراف</span>
+            <span class="status-value {{ 'status-present' if attendance.check_out else 'status-absent' }}">
+                {{ attendance.check_out or 'غير مسجل' }}
+            </span>
+        </div>
+        {% else %}
+        <div class="status-item">
+            <span class="status-label">الحالة</span>
+            <span class="status-value status-absent">لا يوجد حضور مسجل اليوم</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <form method="POST" id="attendanceForm">
+        <div class="gps-card">
+            <h3>📍 التحقق من الموقع الجغرافي</h3>
+            <div class="gps-info">
+                <span>خط العرض:</span>
+                <span class="gps-value" id="latDisplay">جاري التحديد...</span>
+            </div>
+            <div class="gps-info">
+                <span>خط الطول:</span>
+                <span class="gps-value" id="lngDisplay">جاري التحديد...</span>
+            </div>
+            <div class="gps-consent">
+                <label>
+                    <input type="checkbox" name="gps_consent" checked required>
+                    أوافق على مشاركة موقعي مع النظام للتحقق من الحضور بالقرب من مقر العمل
+                </label>
+            </div>
+            <input type="hidden" name="lat" id="latInput">
+            <input type="hidden" name="lng" id="lngInput">
+
+            <!-- GPS Status Banner -->
+            <div id="attGpsBox" class="gps-box waiting">
+                <div class="gps-header">
+                    <span id="attGpsTitle">📡 جاري التحقق من الموقع ونطاق مقر العمل...</span>
+                </div>
+                <div id="attGpsDesc" class="gps-desc">يرجى الانتظار للتأكد من التواجد داخل مقر الشركة.</div>
+                <button type="button" id="btnRetryAttGps" class="btn-retry-gps" style="display:none;" onclick="requestLocation()">🔄 إعادة محاولة تحديد الموقع</button>
+            </div>
+        </div>
+
+        <div class="face-verify" style="margin: 15px 0; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center;">
+            {% if emp.face_data %}
+            <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:10px;">
+                <img src="{{ emp.face_data }}" id="currentFaceImg" style="width:55px;height:55px;border-radius:50%;object-fit:cover;border:2px solid #10b981;">
+                <div style="text-align:right;">
+                    <div style="color:#059669;font-weight:bold;font-size:14px;">✅ بصمة الوجه مسجلة</div>
+                    <div style="color:#6b7280;font-size:12px;">يمكنك استخدامها لتسجيل الدخول السريع</div>
+                </div>
+            </div>
+            <button type="button" class="face-btn" id="verifyFace" style="background:#4b5563;font-size:14px;padding:10px;margin-top:4px;">🔄 إعادة التقاط وتحديث بصمة الوجه</button>
+            {% else %}
+            <div style="color:#d97706;font-weight:bold;font-size:14px;margin-bottom:6px;">⚠️ لم تقم بتسجيل بصمة وجهك بعد</div>
+            <div style="color:#6b7280;font-size:12px;margin-bottom:10px;">سجّل بصمة وجهك الآن لتتمكن من تسجيل الدخول السريع لاحقاً</div>
+            <button type="button" class="face-btn" id="verifyFace" style="margin-top:0;background:#10b981;">📷 تسجيل بصمة وجهي الآن</button>
+            {% endif %}
+
+            <div id="selfieBox" style="display:none;margin-top:15px;">
+                <video id="selfieVideo" autoplay playsinline style="width:100%;max-width:260px;height:200px;border-radius:12px;border:2px solid #667eea;object-fit:cover;background:#000;"></video>
+                <div style="margin-top:8px;">
+                    <button type="button" class="face-btn" id="captureSelfieBtn" style="background:#10b981;padding:10px;font-size:14px;">📸 التقاط وحفظ الصورة</button>
+                </div>
+            </div>
+        </div>
+
+        {% if not attendance or not attendance.check_in %}
+        <button type="submit" name="attendance_type" value="check_in" class="attendance-btn btn-checkin" id="btnCheckIn" {% if is_location_required %}disabled{% endif %}>
+            🟢 تسجيل الحضور
+        </button>
+        {% elif attendance.check_in and not attendance.check_out %}
+        <button type="submit" name="attendance_type" value="check_out" class="attendance-btn btn-checkout" id="btnCheckOut" {% if is_location_required %}disabled{% endif %}>
+            🔴 تسجيل الانصراف
+        </button>
+        {% else %}
+        <button type="button" class="attendance-btn btn-disabled" disabled>
+            ✅ تم إكمال الحضور والانصراف اليوم
+        </button>
+        {% endif %}
+    </form>
+
+    <button type="button" class="btn-logout" onclick="location.href='{{ url_for('mobile_logout') }}'">
+        🚪 تسجيل الخروج
+    </button>
+</div>
+
+<script>
+    // Configuration from server
+    const isLocationRequired = {{ 'true' if is_location_required else 'false' }};
+    const companyLat = {{ fps_settings.company_lat|float if fps_settings.company_lat else 'null' }};
+    const companyLng = {{ fps_settings.company_lng|float if fps_settings.company_lng else 'null' }};
+    const toleranceMeters = {{ fps_settings.distance_tolerance|float if fps_settings.distance_tolerance else 50.0 }};
+
+    const latDisplay = document.getElementById('latDisplay');
+    const lngDisplay = document.getElementById('lngDisplay');
+    const latInput = document.getElementById('latInput');
+    const lngInput = document.getElementById('lngInput');
+    const btnCheckIn = document.getElementById('btnCheckIn');
+    const btnCheckOut = document.getElementById('btnCheckOut');
+
+    const attGpsBox = document.getElementById('attGpsBox');
+    const attGpsTitle = document.getElementById('attGpsTitle');
+    const attGpsDesc = document.getElementById('attGpsDesc');
+    const btnRetryAttGps = document.getElementById('btnRetryAttGps');
+
+    let currentLat = null;
+    let currentLng = null;
+    let locationVerified = false;
+
+    // Haversine distance in meters
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const phi1 = lat1 * Math.PI / 180;
+        const phi2 = lat2 * Math.PI / 180;
+        const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+        const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+                  Math.cos(phi1) * Math.cos(phi2) *
+                  Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    function setGpsState(status, title, desc, showRetry = false) {
+        attGpsBox.className = 'gps-box ' + status;
+        attGpsTitle.textContent = title;
+        attGpsDesc.textContent = desc;
+        btnRetryAttGps.style.display = showRetry ? 'inline-block' : 'none';
+    }
+
+    function setButtonsEnabled(enabled) {
+        if (!isLocationRequired) return;
+        if (btnCheckIn) btnCheckIn.disabled = !enabled;
+        if (btnCheckOut) btnCheckOut.disabled = !enabled;
+    }
+
+    function requestLocation() {
+        setGpsState('waiting', '📡 جاري التحقق من الموقع ونطاق مقر العمل...', 'يرجى الانتظار والتأكد من السماح بالوصول للموقع...', false);
+        setButtonsEnabled(false);
+
+        if (!navigator.geolocation) {
+            latDisplay.textContent = 'غير مدعوم';
+            lngDisplay.textContent = 'غير مدعوم';
+            setGpsState('bad', '⚠️ المتصفح لا يدعم تحديد الموقع', 'المتصفح الحالي لا يدعم GPS.', false);
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                currentLat = pos.coords.latitude;
+                currentLng = pos.coords.longitude;
+                latDisplay.textContent = currentLat.toFixed(6);
+                lngDisplay.textContent = currentLng.toFixed(6);
+                latInput.value = currentLat;
+                lngInput.value = currentLng;
+                const accuracy = Math.round(pos.coords.accuracy);
+
+                if (companyLat !== null && companyLng !== null) {
+                    const dist = calculateDistance(currentLat, currentLng, companyLat, companyLng);
+                    const distRound = Math.round(dist);
+
+                    if (dist <= toleranceMeters) {
+                        locationVerified = true;
+                        setGpsState('ok', '✅ داخل نطاق مقر العمل', `أنت بالقرب من مقر العمل (المسافة: ${distRound}م / المسموح: ${Math.round(toleranceMeters)}م - دقة الـ GPS: ${accuracy}م).`, false);
+                        setButtonsEnabled(true);
+                    } else {
+                        locationVerified = false;
+                        setGpsState('bad', '⛔ خارج نطاق مقر العمل', `أنت على بعد ${distRound}م من الشركة (الحد الأقصى المسموح به: ${Math.round(toleranceMeters)}م). تم تعطيل الحضور والانصراف.`, true);
+                        setButtonsEnabled(false);
+                    }
+                } else {
+                    locationVerified = true;
+                    setGpsState('ok', '✅ تم تحديد الموقع', `الموقع محدد بدقة ${accuracy}م.`, false);
+                    setButtonsEnabled(true);
+                }
+            },
+            err => {
+                locationVerified = false;
+                latDisplay.textContent = 'غير متاح';
+                lngDisplay.textContent = 'غير متاح';
+                let errMsg = 'تعذر تحديد موقعك. يرجى تفعيل الـ GPS والسماح بمشاركة الموقع للمتابعة.';
+                if (err.code === 1) errMsg = 'تم رفض إذن مشاركة الموقع. يرجى تفعيل الإذن من إعدادات المتصفح.';
+                else if (err.code === 2) errMsg = 'تعذر استقبال إشارة الـ GPS. تأكد من تشغيل الموقع في هاتفك.';
+                else if (err.code === 3) errMsg = 'انتهت مهلة قراءة الموقع الجغرافي. اضغط على إعادة المحاولة.';
+
+                setGpsState('bad', '⚠️ فشل في تحديد الموقع الجغرافي', errMsg, true);
+                setButtonsEnabled(false);
+            },
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+        );
+    }
+
+    // Start location check immediately
+    requestLocation();
+
+    // Prevent submission if location required and not verified
+    document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+        if (isLocationRequired) {
+            if (!currentLat || !currentLng || !locationVerified) {
+                e.preventDefault();
+                alert('لا يمكن إتمام العملية: يجب تحديد موقعك والتواجد داخل نطاق مقر العمل أولاً.');
+                return false;
+            }
+        }
+    });
+
+    // Face capture & update
+    const verifyFaceBtn = document.getElementById('verifyFace');
+    const selfieBox = document.getElementById('selfieBox');
+    const selfieVideo = document.getElementById('selfieVideo');
+    const captureSelfieBtn = document.getElementById('captureSelfieBtn');
+    let attendanceFaceStream = null;
+
+    if (verifyFaceBtn) {
+        verifyFaceBtn.addEventListener('click', () => {
+            selfieBox.style.display = 'block';
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } })
+                .then(stream => {
+                    attendanceFaceStream = stream;
+                    selfieVideo.srcObject = stream;
+                    selfieVideo.play();
+                })
+                .catch(err => {
+                    alert('لا يمكن الوصول إلى الكاميرا الأمامية: ' + err.message);
+                });
+        });
+    }
+
+    if (captureSelfieBtn) {
+        captureSelfieBtn.addEventListener('click', () => {
+            captureSelfieBtn.disabled = true;
+            captureSelfieBtn.textContent = 'جاري الحفظ...';
+
+            const canvas = document.createElement('canvas');
+            canvas.width = selfieVideo.videoWidth || 640;
+            canvas.height = selfieVideo.videoHeight || 480;
+            canvas.getContext('2d').drawImage(selfieVideo, 0, 0);
+            const faceData = canvas.toDataURL('image/jpeg', 0.85);
+
+            if (attendanceFaceStream) {
+                attendanceFaceStream.getTracks().forEach(track => track.stop());
+                attendanceFaceStream = null;
+            }
+
+            fetch('{{ url_for("mobile_face_login") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ face_data: faceData, lat: currentLat, lng: currentLng })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.ok) {
+                    alert(data.message || 'تم حفظ بصمة الوجه بنجاح!');
+                    location.reload();
+                } else {
+                    alert('خطأ: ' + (data.error || 'تعذر حفظ بصمة الوجه'));
+                    captureSelfieBtn.disabled = false;
+                    captureSelfieBtn.textContent = '📸 التقاط وحفظ الصورة';
+                }
+            })
+            .catch(err => {
+                alert('حدث خطأ أثناء الاتصال بالخادم');
+                captureSelfieBtn.disabled = false;
+                captureSelfieBtn.textContent = '📸 التقاط وحفظ الصورة';
+            });
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block title %}سجلات البصمة - {{ device.name }}{% endblock %}
+{% block header %}سجلات الحضور البيومتري — {{ device.name }}{% endblock %}
+{% block actions %}
+<a href="{{ url_for('device_detail', device_id=device.id) }}" class="btn btn-outline no-print">← الجهاز</a>
+{% if current_user.role=='admin' %}
+<button class="btn btn-success no-print" onclick="applyAttendance()">📋 تطبيق على المرتبات</button>
+{% endif %}
+<button class="btn btn-outline no-print" onclick="window.print()">🖨️ طباعة</button>
+{% endblock %}
+
+{% block content %}
+
+<!-- Device Status Bar -->
+<div class="card" style="padding:14px 20px;margin-bottom:16px;background:linear-gradient(135deg,#1e40af,#2563eb);color:#fff;">
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
+        <div>
+            <strong>{{ device.name }}</strong>
+            <span style="margin-right:8px;opacity:.8;">{{ device.ip_address }}:{{ device.port }}</span>
+        </div>
+        <div>
+            الحالة:
+            <span style="background:{{ '#16a34a' if device.status=='connected' else '#dc2626' }};
+                         padding:3px 10px;border-radius:12px;font-size:.8rem;">
+                {{ 'متصل' if device.status=='connected' else device.status }}
+            </span>
+        </div>
+        <div>
+            غير معالج: <strong>{{ unprocessed_count }}</strong>
+        </div>
+        {% if unmapped_records %}
+        <div style="color:#fde68a;">
+            ⚠️ {{ unmapped_records|length }} سجل غير مرتبط
+            <a href="{{ url_for('device_mapping', device_id=device.id) }}" style="color:#fde68a;text-decoration:underline;">
+                (إدارة الربط)
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="padding:16px;margin-bottom:16px;">
+    <form method="GET" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="form-group">
+            <label>من تاريخ</label>
+            <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>إلى تاريخ</label>
+            <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>حالة المعالجة</label>
+            <select name="processed" class="form-control">
+                <option value="" {{ 'selected' if processed is none }}>الكل</option>
+                <option value="pending"    {{ 'selected' if processed==0 }}>جديد (غير معالج)</option>
+                <option value="processed"  {{ 'selected' if processed==1 }}>معالج</option>
+                <option value="applied"    {{ 'selected' if processed==2 }}>مطبق على المرتبات</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>نوع البصمة</label>
+            <select name="check_type" class="form-control">
+                <option value="">الكل</option>
+                <option value="check_in"  {{ 'selected' if request.args.get('check_type')=='check_in' }}>دخول</option>
+                <option value="check_out" {{ 'selected' if request.args.get('check_type')=='check_out' }}>خروج</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>بحث بـ UID</label>
+            <input type="text" name="uid" value="{{ request.args.get('uid','') }}"
+                   class="form-control" style="width:120px;" placeholder="1, 2, ...">
+        </div>
+        <button class="btn btn-primary">🔍 تصفية</button>
+        <a href="{{ url_for('device_attendance', device_id=device.id) }}" class="btn btn-outline">↺ إعادة ضبط</a>
+    </form>
+</div>
+
+<!-- Summary Stats -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px;">
+    {% set total = records|length %}
+    {% set pending = records|selectattr('processed','equalto',0)|list|length %}
+    {% set processed_cnt = records|selectattr('processed','equalto',1)|list|length %}
+    {% set applied_cnt = records|selectattr('processed','equalto',2)|list|length %}
+    {% set checkin_cnt = records|selectattr('check_type','equalto','check_in')|list|length %}
+    {% set checkout_cnt = records|selectattr('check_type','equalto','check_out')|list|length %}
+    <div class="card" style="text-align:center;padding:14px;">
+        <div style="font-size:1.5rem;font-weight:700;">{{ total }}</div>
+        <div style="font-size:.8rem;color:#666;">إجمالي السجلات</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px;">
+        <div style="font-size:1.5rem;font-weight:700;color:#f59e0b;">{{ pending }}</div>
+        <div style="font-size:.8rem;color:#666;">جديد</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px;">
+        <div style="font-size:1.5rem;font-weight:700;color:#2563eb;">{{ processed_cnt }}</div>
+        <div style="font-size:.8rem;color:#666;">معالج</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px;">
+        <div style="font-size:1.5rem;font-weight:700;color:#16a34a;">{{ applied_cnt }}</div>
+        <div style="font-size:.8rem;color:#666;">مطبق</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px;">
+        <div style="font-size:1.5rem;font-weight:700;color:#0891b2;">{{ checkin_cnt }}</div>
+        <div style="font-size:.8rem;color:#666;">دخول</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px;">
+        <div style="font-size:1.5rem;font-weight:700;color:#8b5cf6;">{{ checkout_cnt }}</div>
+        <div style="font-size:.8rem;color:#666;">خروج</div>
+    </div>
+</div>
+
+<!-- Records Table -->
+<div class="card">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h3>سجلات الحضور ({{ records|length }})</h3>
+        {% if current_user.role=='admin' and records|selectattr('processed','equalto',0)|list %}
+        <button class="btn btn-sm btn-warning no-print" onclick="bulkProcess()">⚡ معالجة الكل</button>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if records %}
+        <div class="table-wrap">
+            <table>
+                <thead><tr>
+                    <th>UID الجهاز</th>
+                    <th>الموظف</th>
+                    <th>التاريخ</th>
+                    <th>الوقت</th>
+                    <th>النوع</th>
+                    <th>حالة المعالجة</th>
+                    <th class="no-print">إجراءات</th>
+                </tr></thead>
+                <tbody>
+                {% for r in records %}
+                <tr style="{{ 'background:#fff7ed;' if not r.emp_name else '' }}">
+                    <td class="number-cell"><strong>{{ r.device_uid }}</strong></td>
+                    <td>
+                        {% if r.emp_name %}
+                            {{ r.emp_name }}
+                            <small style="color:#6b7280;">({{ r.emp_code }})</small>
+                        {% else %}
+                            <span style="color:#ef4444;">⚠️ غير مرتبط</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.check_date }}</td>
+                    <td class="number-cell">{{ r.check_time }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'primary' if r.check_type=='check_in' else 'info' }}">
+                            {{ 'دخول 🟢' if r.check_type=='check_in' else 'خروج 🔴' }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if r.processed == 2 %}
+                            <span class="badge badge-success">مطبق ✓</span>
+                        {% elif r.processed == 1 %}
+                            <span class="badge badge-warning">معالج</span>
+                        {% else %}
+                            <span class="badge badge-secondary">جديد</span>
+                        {% endif %}
+                    </td>
+                    <td class="no-print">
+                        {% if r.processed == 0 and not r.emp_name and current_user.role=='admin' %}
+                        <button class="btn btn-sm btn-primary"
+                                onclick="mapSingle('{{ r.device_uid }}')">ربط</button>
+                        {% elif r.processed == 0 %}
+                        <span style="color:#9ca3af;font-size:.8rem;">انتظار الربط</span>
+                        {% else %}
+                        <span style="color:#9ca3af;font-size:.8rem;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:40px;color:#9ca3af;">
+            <div style="font-size:3rem;">📭</div>
+            <h3>لا توجد سجلات</h3>
+            <p>قم بتحميل الحضور من الجهاز أولاً</p>
+            <a href="{{ url_for('device_detail', device_id=device.id) }}" class="btn btn-primary" style="margin-top:12px;">
+                ⬇️ تحميل الحضور
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Map single UID modal -->
+<div class="modal" id="mapModal">
+    <div class="modal-content" style="max-width:420px;">
+        <span class="close" onclick="closeModal('mapModal')">&times;</span>
+        <h3>ربط UID بموظف</h3>
+        <form method="POST" action="{{ url_for('device_map_employee', device_id=device.id) }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <input type="hidden" name="device_uid" id="mapUID">
+            <div class="form-group">
+                <label>معرف الجهاز</label>
+                <input type="text" id="mapUIDDisplay" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label>اختر الموظف</label>
+                <select name="employee_id" required class="form-control">
+                    <option value="">— اختر —</option>
+                    {% for emp in all_employees %}
+                    <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.emp_code }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <input type="hidden" name="apply_pending" value="1">
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <button type="submit" class="btn btn-primary">ربط</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('mapModal')">إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="actionResult" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+     padding:12px 24px;border-radius:8px;z-index:9999;font-weight:600;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var DEVICE_ID = {{ device.id }};
+var CSRF = '{{ csrf_token() }}';
+
+function openModal(id){ document.getElementById(id).style.display='block'; }
+function closeModal(id){ document.getElementById(id).style.display='none'; }
+window.onclick = function(e){ if(e.target.classList.contains('modal')) e.target.style.display='none'; }
+
+function showToast(msg, ok){
+    var box = document.getElementById('actionResult');
+    box.style.display='block';
+    box.style.background = ok ? '#16a34a' : '#dc2626';
+    box.style.color = '#fff';
+    box.textContent = msg;
+    setTimeout(()=>box.style.display='none', 4000);
+}
+
+function mapSingle(uid){
+    document.getElementById('mapUID').value = uid;
+    document.getElementById('mapUIDDisplay').value = uid;
+    openModal('mapModal');
+}
+
+function applyAttendance(){
+    var month = prompt('شهر التطبيق (YYYY-MM):','{{ now.strftime("%Y-%m") if now else "" }}');
+    if(!month) return;
+    var overwrite = confirm('هل تريد الكتابة فوق سجلات الحضور الموجودة لهذا الشهر؟');
+    fetch('/device/'+DEVICE_ID+'/apply-attendance',{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':CSRF},
+        body:'month='+month+'&overwrite='+(overwrite?'true':'false')
+    }).then(r=>r.json()).then(data=>{
+        showToast(data.ok ? data.message : data.error, data.ok);
+        if(data.ok) setTimeout(()=>location.reload(), 2000);
+    }).catch(()=>showToast('فشل الاتصال', false));
+}
+
+function bulkProcess(){
+    if(!confirm('معالجة جميع السجلات الجديدة (غير المعالجة)؟')) return;
+    fetch('/device/'+DEVICE_ID+'/bulk-process',{
+        method:'POST',
+        headers:{'X-CSRFToken':CSRF}
+    }).then(r=>r.json()).then(d=>{
+        showToast(d.ok ? 'تم معالجة '+d.processed+' سجل' : d.error, d.ok);
+        if(d.ok) setTimeout(()=>location.reload(), 1500);
+    }).catch(()=>showToast('فشل', false));
+}
+</script>
+{% endblock %}

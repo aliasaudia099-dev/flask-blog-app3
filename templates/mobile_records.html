@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>سجلات الحضور والغياب - الهاتف</title>
+<style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; margin: 0; padding: 16px; min-height: 100vh; direction: rtl; color: #1f2937; }
+    .container { max-width: 500px; margin: 0 auto; }
+    
+    /* Mobile Navigation Bar */
+    .mobile-nav { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .mobile-nav::-webkit-scrollbar { display: none; }
+    .nav-btn { flex: 1; min-width: 105px; text-align: center; padding: 10px 6px; border-radius: 10px; background: white; color: #4b5563; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; white-space: nowrap; }
+    .nav-btn.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(102,126,234,0.35); }
+
+    .header-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 16px; box-shadow: 0 8px 20px rgba(102,126,234,0.25); }
+    .header-card h1 { margin: 0; font-size: 20px; }
+    .header-card p { margin: 4px 0 0; opacity: 0.9; font-size: 13px; }
+
+    .emp-card { background: white; padding: 14px 18px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #f0f0f0; }
+    .emp-name { font-size: 16px; font-weight: bold; color: #111827; }
+    .emp-code { font-size: 13px; color: #6b7280; }
+
+    /* Filters Card */
+    .filter-card { background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 16px; border: 1px solid #f0f0f0; }
+    .filter-card h3 { margin: 0 0 12px 0; font-size: 15px; color: #374151; display: flex; align-items: center; gap: 6px; }
+    .filter-form { display: flex; flex-direction: column; gap: 10px; }
+    .form-row { display: flex; gap: 8px; }
+    .form-group { flex: 1; }
+    .form-group label { display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 600; }
+    .form-control { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: #fafafa; }
+    .form-control:focus { outline: none; border-color: #667eea; background: white; }
+    .btn-search { width: 100%; padding: 11px; background: #667eea; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; transition: background 0.2s; }
+    .btn-search:hover { background: #5568d3; }
+
+    /* Stats Grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+    .stat-box { background: white; padding: 10px 6px; border-radius: 10px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; }
+    .stat-box .num { font-size: 18px; font-weight: bold; }
+    .stat-box .lbl { font-size: 11px; color: #6b7280; margin-top: 2px; }
+    .stat-present { color: #10b981; }
+    .stat-absent { color: #ef4444; }
+    .stat-late { color: #f59e0b; }
+    .stat-leave { color: #8b5cf6; }
+
+    /* Records List */
+    .records-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .record-card { background: white; padding: 14px 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-right: 4px solid #10b981; border: 1px solid #f3f4f6; }
+    .record-card.status-absent { border-right: 4px solid #ef4444; }
+    .record-card.status-late { border-right: 4px solid #f59e0b; }
+    .record-card.status-leave { border-right: 4px solid #8b5cf6; }
+    .record-card.status-weekend { border-right: 4px solid #9ca3af; }
+
+    .rec-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .rec-date { font-weight: bold; font-size: 14px; color: #111827; }
+    .rec-badge { padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .badge-present { background: #dcfce7; color: #15803d; }
+    .badge-absent { background: #fee2e2; color: #b91c1c; }
+    .badge-late { background: #fef3c7; color: #b45309; }
+    .badge-leave { background: #ede9fe; color: #6d28d9; }
+    .badge-weekend { background: #f3f4f6; color: #4b5563; }
+
+    .rec-times { display: flex; justify-content: space-between; font-size: 13px; color: #4b5563; background: #f9fafb; padding: 8px 12px; border-radius: 8px; margin-top: 6px; }
+    .time-item span { font-weight: bold; color: #111827; }
+    .rec-note { font-size: 12px; color: #6b7280; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+
+    .empty-state { background: white; padding: 35px 20px; border-radius: 12px; text-align: center; color: #6b7280; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .empty-state .icon { font-size: 40px; margin-bottom: 8px; }
+
+    .notice-card { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 10px 14px; border-radius: 8px; font-size: 12px; text-align: center; margin-top: 10px; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav">
+        <a href="{{ url_for('mobile_attendance') }}" class="nav-btn">📱 تسجيل الحضور</a>
+        <a href="{{ url_for('mobile_records') }}" class="nav-btn active">📋 سجل الحضور</a>
+        <a href="{{ url_for('mobile_calendar') }}" class="nav-btn">📅 تقويم الحضور</a>
+        <a href="{{ url_for('mobile_payslip') }}" class="nav-btn">💰 كشف المرتب</a>
+    </div>
+
+    <div class="header-card">
+        <h1>📋 سجلات الحضور والغياب</h1>
+        <p>عرض وبحث سجلات الحضور الخاصة بك (للقراءة فقط)</p>
+    </div>
+
+    <div class="emp-card">
+        <div>
+            <div class="emp-name">{{ emp.name }}</div>
+            <div class="emp-code">الكود الوظيفي: {{ emp.emp_code }}</div>
+        </div>
+        <div style="font-size:12px; color:#4b5563; text-align:left;">
+            <div>{{ emp.position or '-' }}</div>
+            <div style="color:#6b7280;">{{ emp.dept_name or '-' }}</div>
+        </div>
+    </div>
+
+    <!-- Filter & Search Card -->
+    <div class="filter-card">
+        <h3>🔍 البحث والتصفية</h3>
+        <form method="GET" action="{{ url_for('mobile_records') }}" class="filter-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الشهر</label>
+                    <input type="month" name="month" value="{{ month }}" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>الحالة</label>
+                    <select name="status" class="form-control">
+                        <option value="all" {{ 'selected' if status_filter == 'all' }}>الكل</option>
+                        <option value="present" {{ 'selected' if status_filter == 'present' }}>حاضر</option>
+                        <option value="late" {{ 'selected' if status_filter == 'late' }}>متأخر</option>
+                        <option value="absent" {{ 'selected' if status_filter == 'absent' }}>غائب</option>
+                        <option value="leave" {{ 'selected' if status_filter == 'leave' }}>إجازة</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn-search">بحث وتحديث السجلات</button>
+        </form>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="stats-grid">
+        <div class="stat-box">
+            <div class="num stat-present">{{ stats.present }}</div>
+            <div class="lbl">أيام الحضور</div>
+        </div>
+        <div class="stat-box">
+            <div class="num stat-late">{{ stats.late }}</div>
+            <div class="lbl">تأخير</div>
+        </div>
+        <div class="stat-box">
+            <div class="num stat-absent">{{ stats.absent }}</div>
+            <div class="lbl">غياب</div>
+        </div>
+        <div class="stat-box">
+            <div class="num stat-leave">{{ stats.leave }}</div>
+            <div class="lbl">إجازات</div>
+        </div>
+    </div>
+
+    <!-- Records List -->
+    <div class="records-list">
+        {% if records %}
+            {% for r in records %}
+            <div class="record-card status-{{ r.status }}">
+                <div class="rec-top">
+                    <div class="rec-date">📅 {{ r.date }}</div>
+                    {% if r.status == 'present' %}
+                        <span class="rec-badge badge-present">حاضر</span>
+                    {% elif r.status == 'late' %}
+                        <span class="rec-badge badge-late">متأخر</span>
+                    {% elif r.status == 'absent' %}
+                        <span class="rec-badge badge-absent">غائب</span>
+                    {% elif r.status in ['leave', 'sick', 'annual'] %}
+                        <span class="rec-badge badge-leave">إجازة</span>
+                    {% else %}
+                        <span class="rec-badge badge-weekend">{{ r.status }}</span>
+                    {% endif %}
+                </div>
+                <div class="rec-times">
+                    <div class="time-item">دخول: <span>{{ r.check_in or '—' }}</span></div>
+                    <div class="time-item">خروج: <span>{{ r.check_out or '—' }}</span></div>
+                </div>
+                {% if r.note %}
+                <div class="rec-note">
+                    📝 {{ r.note }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div class="icon">🔍</div>
+                <div style="font-weight:bold; font-size:15px; margin-bottom:4px;">لا توجد سجلات حضور مسجلة</div>
+                <div style="font-size:13px;">لم يتم تسجيل حضور خلال الفترة المحددة</div>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="notice-card">
+        🔒 هذه السجلات خاصة بحسابك فقط ومخصصة للعرض والبحث دون إمكانية التعديل
+    </div>
+
+</div>
+</body>
+</html>
+

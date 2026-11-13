@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+{% block title %}الإعدادات{% endblock %}
+{% block header %}إعدادات النظام{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>إعدادات النظام</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <div class="form-section" style="border:2px solid var(--primary);border-radius:10px;">
+                <div class="form-section-title" style="color:var(--primary-dark);">🧮 احتساب الأيام في كشف المرتبات
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="max-width:560px;">
+                        <label>الأيام التي لا يوجد لها تسجيل حضور</label>
+                        <select name="count_missing_as_absent" class="form-control">
+                            <option value="1" {{ 'selected' if s.count_missing_as_absent }}>⛔ تُحتسب غياباً — لا يُحتسب
+                                اليوم إلا بحضور مسجّل (الافتراضي)</option>
+                            <option value="0" {{ 'selected' if not s.count_missing_as_absent }}>✅ تُحتسب حضوراً — تُخصم
+                                الأيام المسجّلة «غائب» فقط</option>
+                        </select>
+                        <p style="font-size:.8rem;color:#6b7280;line-height:1.8;margin-top:8px;">
+                            عند اختيار «غياب»: <strong>لا يُحتسب اليوم في المرتب إلا إذا وُجد له سجل</strong>
+                            (حاضر / متأخر / إجازة / مرضي) أو إجازة معتمدة من صفحة الإجازات؛ وما دون ذلك يُخصم
+                            (الأجر اليومي × نسبة خصم الغياب). تُستثنى أيام الإجازة الأسبوعية، وفي الشهر الحالي
+                            تُحتسب الأيام المنقضية فقط حتى تاريخ اليوم.
+                            <br><strong>⛔ تنبيه:</strong> قبل تفعيلها تأكد من تسجيل الحضور لكل الموظفين،
+                            وإلا يُخصم الشهر بالكامل من كل من لا يوجد له سجلات حضور.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">بيانات الشركة</div>
+                <div class="form-row">
+                    <div class="form-group"><label>اسم الشركة</label><input name="company_name"
+                            value="{{ s.company_name }}" class="form-control"></div>
+                    <div class="form-group"><label>العنوان</label><input name="company_address"
+                            value="{{ s.company_address }}" class="form-control"></div>
+                    <div class="form-group"><label>الهاتف</label><input name="company_phone"
+                            value="{{ s.company_phone }}" class="form-control"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>الرقم الضريبي</label><input name="company_tax_id"
+                            value="{{ s.company_tax_id }}" class="form-control"></div>
+                    <div class="form-group"><label>رقم التأمينات</label><input name="company_insurance_no"
+                            value="{{ s.company_insurance_no }}" class="form-control"></div>
+                    <div class="form-group"><label>العملة</label>
+                        <select name="currency" class="form-control">
+                            <option value="EGP" {{ 'selected' if s.currency=='EGP' }}>جنيه مصري</option>
+                            <option value="SAR" {{ 'selected' if s.currency=='SAR' }}>ريال سعودي</option>
+                            <option value="AED" {{ 'selected' if s.currency=='AED' }}>درهم إماراتي</option>
+                            <option value="USD" {{ 'selected' if s.currency=='USD' }}>دولار</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">🖥️ أجهزة البصمة (ZKTeco Biometric Devices)</div>
+                <p style="font-size:.9rem;color:#666;margin-bottom:14px;">
+                    يدعم النظام إدارة أجهزة بصمة متعددة مع لوحات تحكم متقدمة، ربط الموظفين بالـ UID، ومزامنة سجلات
+                    الحضور وتوقيت الأجهزة تلقائياً.
+                </p>
+                <div class="form-row">
+                    <div class="form-group" style="max-width:300px;">
+                        <a href="{{ url_for('devices') }}" class="btn btn-primary">🖥️ الانتقال لإدارة الأجهزة</a>
+                    </div>
+                    <div class="form-group" style="max-width:300px;">
+                        <a href="{{ url_for('device_global_attendance') }}" class="btn btn-outline">📋 حضور جميع
+                            الأجهزة</a>
+                    </div>
+                    <div class="form-group" style="max-width:300px;">
+                        <a href="{{ url_for('device_global_logs') }}" class="btn btn-outline">📜 سجل عمليات الأجهزة</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">👤 تسجيل الدخول (Login)</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>طريقة تسجيل الدخول للموظفين</label>
+                        <select name="login_method" class="form-control">
+                            <option value="username" {{ 'selected' if s.login_method=='username' }}>رقم المستخدم وكلمة
+                                المرور</option>
+                            <option value="face" {{ 'selected' if s.login_method=='face' }}>التعرف على الوجه (Face ID)
+                            </option>
+                            <option value="username_face" {{ 'selected' if s.login_method=='username_face' }}>رقم
+                                المستخدم + الوجه</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>حالة تسجيل الدخول</label>
+                        <select name="login_status" class="form-control">
+                            <option value="active" {{ 'selected' if s.login_status=='active' }}>مفتوح للجميع</option>
+                            <option value="admin_only" {{ 'selected' if s.login_status=='admin_only' }}>الإدارة فقط
+                            </option>
+                            <option value="device_only" {{ 'selected' if s.login_status=='device_only' }}>أجهزة البصمة
+                                فقط</option>
+                        </select>
+                    </div>
+                </div>
+                <hr>
+                <div class="form-row">
+                    <div class="form-group" style="max-width:300px;">
+                        <button type="submit" name="save_settings" class="btn btn-primary">حفظ الإعدادات العامة</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">📱 تسجيل الحضور عبر الهاتف (Mobile Attendance)</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>تفعيل تسجيل الدخول عبر الهاتف (Face Recognition)</label>
+                        <select name="mobile_login_enabled" class="form-control">
+                            <option value="1" {{ 'selected' if s.mobile_login_enabled|string=='1' }}>تفعيل</option>
+                            <option value="0" {{ 'selected' if s.mobile_login_enabled|string=='0' }}>إلغاء التفعيل
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>نوع التعرف على الوجه</label>
+                        <select name="mobile_login_type" class="form-control">
+                            <option value="face" {{ 'selected' if s.mobile_login_type=='face' }}>التعرف على الوجه (Face)
+                            </option>
+                            <option value="face_id" {{ 'selected' if s.mobile_login_type=='face_id' }}>Face ID
+                                (Biometric ID)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>الرجوع لشاشة الدخول (جلسة جديدة)</label>
+                        <select name="mobile_return_login" class="form-control">
+                            <option value="1" {{ 'selected' if s.mobile_return_login|string=='1' }}>نعم (تسجيل خروج
+                                تلقائي)</option>
+                            <option value="0" {{ 'selected' if s.mobile_return_login|string=='0' }}>لا (إبقاء الجلسة)
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <hr>
+                <div class="form-row">
+                    <div class="form-group" style="max-width:300px;">
+                        <button type="submit" name="save_mobile" class="btn btn-primary">حفظ إعدادات التسجيل عبر
+                            الهاتف</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">📍 إعدادات الموقع الجغرافي (GPS)</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>تفعيل تتبع الموقع (GPS)</label>
+                        <select name="gps_enabled" class="form-control">
+                            <option value="1" {{ 'selected' if fps_settings.gps_enabled|string=='1' }}>تفعيل</option>
+                            <option value="0" {{ 'selected' if fps_settings.gps_enabled|string=='0' }}>إلغاء التفعيل
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>البداية الإلزامية (تسجيل الدخول يحتاج الموقع)</label>
+                        <select name="location_required" class="form-control">
+                            <option value="1" {{ 'selected' if fps_settings.location_required|string=='1' }}>نعم - يجب
+                                وجود موقع صحيح</option>
+                            <option value="0" {{ 'selected' if fps_settings.location_required|string=='0' }}>لا - يمكن
+                                تسجيل من أي مكان</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>التأكيد على الموقع (طلب تأكيد عن بعد)</label>
+                        <select name="verify_location" class="form-control">
+                            <option value="1" {{ 'selected' if fps_settings.verify_location|string=='1' }}>نعم - اسأل
+                                الموظف للتأكيد</option>
+                            <option value="0" {{ 'selected' if fps_settings.verify_location|string=='0' }}>لا - مسجل
+                                تلقائياً</option>
+                        </select>
+                    </div>
+                </div>
+                <hr>
+                <div class="form-row">
+                    <div class="form-group" style="max-width:300px;">
+                        <button type="submit" name="save_fps" class="btn btn-primary">حفظ إعدادات FPS/GPS</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">📍 إحداثيات الشركة (النقطة المحظورة)</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>خط العرض (Latitude)</label>
+                        <input name="company_lat" type="text" value="{{ fps_settings.company_lat or '' }}"
+                            class="form-control" placeholder="مثال: 30.0444">
+                    </div>
+                    <div class="form-group">
+                        <label>خط الطول (Longitude)</label>
+                        <input name="company_lng" type="text" value="{{ fps_settings.company_lng or '' }}"
+                            class="form-control" placeholder="مثال: 31.2357">
+                    </div>
+                    <div class="form-group">
+                        <label>حد المسموح به (المتر) - غياب عن الموقع يتم خصمها</label>
+                        <input name="distance_tolerance" type="number"
+                            value="{{ fps_settings.distance_tolerance or 50 }}" class="form-control"
+                            style="width:150px;" placeholder="مثال: 50">
+                    </div>
+                    <div class="form-group">
+                        <label>انتظار قبل التسجيل (الدقائق) - لتجنب الازدحام من نفس الموقع</label>
+                        <input name="gps_delay_minutes" type="number" value="{{ fps_settings.gps_delay_minutes or 0 }}"
+                            class="form-control" style="width:150px;" placeholder="مثال: 5">
+                    </div>
+                </div>
+                <hr>
+                <div class="form-row">
+                    <div class="form-group" style="max-width:300px;">
+                        <button type="submit" name="save_location" class="btn btn-primary">حفظ إحداثيات الشركة</button>
+                    </div>
+                    <div class="form-group" style="max-width:300px;">
+                        <button type="button" class="btn btn-outline"
+                            onclick="alert('يرجى إدخال إحداثيات الشركة بدقة عالية (أرخص طريقة: استخدم Google Maps، انقر على الموقع، واسحبها لعرض الإحداثيات)')">كيف
+                            أجد إحداثيات الشركة؟</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">إعدادات العمل</div>
+                <div class="form-row">
+                    <div class="form-group"><label>الإجازة الأسبوعية (0=السبت ... 6=الجمعة)</label><input
+                            name="weekly_holidays" value="{{ s.weekly_holidays }}" class="form-control"
+                            placeholder="مثال: 6"></div>
+                    <div class="form-group"><label>خصم التأخير بالساعة</label><input name="late_deduction_per_hour"
+                            value="{{ s.late_deduction_per_hour }}" class="form-control" step="0.01"></div>
+                    <div class="form-group"><label>نسبة خصم الغياب (%)</label><input name="absence_deduction_percent"
+                            value="{{ s.absence_deduction_percent }}" class="form-control" type="number"></div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">معامل الإضافي</div>
+                <div class="form-row">
+                    <div class="form-group"><label>يوم عادي (×)</label><input name="overtime_weekday"
+                            value="{{ s.overtime_weekday }}" class="form-control" step="0.5"></div>
+                    <div class="form-group"><label>عطلة (×)</label><input name="overtime_weekend"
+                            value="{{ s.overtime_weekend }}" class="form-control" step="0.5"></div>
+                    <div class="form-group"><label>عيد (×)</label><input name="overtime_holiday"
+                            value="{{ s.overtime_holiday }}" class="form-control" step="0.5"></div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">التأمينات الاجتماعية</div>
+                <div class="form-row">
+                    <div class="form-group"><label>أرضية التأمين</label><input name="insurance_floor"
+                            value="{{ s.insurance_floor }}" class="form-control" type="number"></div>
+                    <div class="form-group"><label>سقف التأمين</label><input name="insurance_ceiling"
+                            value="{{ s.insurance_ceiling }}" class="form-control" type="number"></div>
+                    <div class="form-group"><label>نسبة الموظف %</label><input name="insurance_employee_ratio"
+                            value="{{ s.insurance_employee_ratio }}" class="form-control" step="0.01"></div>
+                    <div class="form-group"><label>نسبة الشركة %</label><input name="insurance_employer_ratio"
+                            value="{{ s.insurance_employer_ratio }}" class="form-control" step="0.01"></div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">الإعفاء الضريبي الافتراضي</div>
+                <div class="form-row">
+                    <div class="form-group" style="max-width:250px;"><label>إعفاء ضريبي شهري</label><input
+                            name="tax_exempt_default" value="{{ s.tax_exempt_default }}" class="form-control"
+                            step="0.01"></div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary">💾 حفظ الإعدادات</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>شرائح ضريبة كسب العمل (سنوياً)</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>من</th>
+                        <th>إلى</th>
+                        <th>النسبة %</th>
+                        <th>خصم ثابت</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in brackets %}
+                    <tr>
+                        <td class="number-cell">{{ "{:,.0f}".format(b.from_amount) }}</td>
+                        <td class="number-cell">{{ '{:,.0f}'.format(b.to_amount) if b.to_amount else '∞' }}</td>
+                        <td>{{ b.rate }}%</td>
+                        <td class="number-cell">{{ "{:,.0f}".format(b.fixed_deduction) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p style="font-size:.8rem;color:#9ca3af;margin-top:10px;">تُحسب الضريبة على الدخل السنوي = (إجمالي المستحق
+            الشهري × 12). يتم تقسيم النتيجة على 12 للخصم الشهري.</p>
+        <p style="font-size:.8rem;color:#9ca3af;">آخر نسخة احتياطية تلقائية: {{ s.last_backup or 'لم تُنشأ بعد' }}</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>💾 النسخ الاحتياطي لقاعدة البيانات</h3>
+    </div>
+    <div class="card-body">
+        <p style="font-size:.85rem;color:#6b7280;margin-bottom:12px;">يتم إنشاء نسخة احتياطية تلقائياً مرة كل شهر. يمكنك
+            أيضاً إنشاء نسخة يدوية أو استعادة نسخة سابقة أو تنزيلها.</p>
+        <form method="POST" action="{{ url_for('backup_create') }}" style="margin-bottom:16px">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button class="btn btn-primary">⬆ إنشاء نسخة احتياطية الآن</button>
+        </form>
+        {% if backups %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>الملف</th>
+                        <th>التاريخ</th>
+                        <th>الحجم</th>
+                        <th class="no-print">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in backups %}
+                    <tr>
+                        <td dir="ltr">{{ b.filename }}</td>
+                        <td>{{ b.created }}</td>
+                        <td>{{ b.size }} بايت</td>
+                        <td class="no-print" style="display:flex;gap:0.3rem;flex-wrap:wrap">
+                            <form method="POST" action="{{ url_for('backup_restore', filename=b.filename) }}"
+                                style="display:inline"
+                                onsubmit="return confirm('هل تريد استعادة هذه النسخة؟ سيتم استبدال البيانات الحالية.')">
+                                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                                <button class="btn btn-sm btn-warning">استعادة</button>
+                            </form>
+                            <a href="{{ url_for('backup_download', filename=b.filename) }}"
+                                class="btn btn-sm btn-outline">تحميل</a>
+                            <form method="POST" action="{{ url_for('backup_delete', filename=b.filename) }}"
+                                style="display:inline" onsubmit="return confirm('حذف هذه النسخة الاحتياطية؟')">
+                                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                                <button class="btn btn-sm btn-danger">حذف</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p style="color:#9ca3af;font-size:.85rem;">لا توجد نسخ احتياطية بعد.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:2rem">
+    <h3 style="margin-bottom:1rem">🔑 تغيير كلمة المرور</h3>
+    <form method="POST" action="/change-password" style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-end">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div style="flex:1;min-width:200px">
+            <label>كلمة المرور الحالية</label>
+            <input type="password" name="old_password" required>
+        </div>
+        <div style="flex:1;min-width:200px">
+            <label>كلمة المرور الجديدة</label>
+            <input type="password" name="new_password" required minlength="6">
+        </div>
+        <div style="flex:1;min-width:200px">
+            <label>تأكيد كلمة المرور</label>
+            <input type="password" name="confirm_password" required minlength="6">
+        </div>
+        <div>
+            <button type="submit" class="btn">تحديث</button>
+        </div>
+    </form>
+</div>
+</div>
+{% endblock %}

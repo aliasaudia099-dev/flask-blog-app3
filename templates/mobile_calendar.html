@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>تقويم الحضور والغياب - الهاتف</title>
+<style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; margin: 0; padding: 16px; min-height: 100vh; direction: rtl; color: #1f2937; }
+    .container { max-width: 500px; margin: 0 auto; }
+
+    /* Mobile Navigation Bar */
+    .mobile-nav { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .mobile-nav::-webkit-scrollbar { display: none; }
+    .nav-btn { flex: 1; min-width: 105px; text-align: center; padding: 10px 6px; border-radius: 10px; background: white; color: #4b5563; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; white-space: nowrap; }
+    .nav-btn.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(102,126,234,0.35); }
+
+    .header-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 16px; box-shadow: 0 8px 20px rgba(102,126,234,0.25); }
+    .header-card h1 { margin: 0; font-size: 20px; }
+    .header-card p { margin: 4px 0 0; opacity: 0.9; font-size: 13px; }
+
+    .emp-card { background: white; padding: 14px 18px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #f0f0f0; }
+    .emp-name { font-size: 16px; font-weight: bold; color: #111827; }
+    .emp-code { font-size: 13px; color: #6b7280; }
+
+    /* Month Navigator */
+    .month-nav-card { background: white; padding: 12px 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #f0f0f0; }
+    .nav-arrow { text-decoration: none; background: #f3f4f6; color: #374151; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: bold; transition: all 0.2s; }
+    .nav-arrow:hover { background: #e5e7eb; }
+    .cur-month { font-size: 16px; font-weight: bold; color: #667eea; display: flex; align-items: center; gap: 6px; }
+
+    /* Calendar Grid */
+    .cal-card { background: white; padding: 14px 10px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 16px; border: 1px solid #f0f0f0; }
+    .cal-table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; }
+    .cal-table th { padding: 8px 2px; font-size: 12px; color: #6b7280; font-weight: 600; border-bottom: 2px solid #f3f4f6; }
+    .cal-table td { padding: 4px 2px; height: 60px; vertical-align: top; border: 1px solid #f9fafb; position: relative; }
+
+    .cal-day { height: 100%; border-radius: 8px; padding: 4px 2px; display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; cursor: pointer; transition: transform 0.1s; }
+    .cal-day:active { transform: scale(0.96); }
+    .day-num { font-weight: bold; font-size: 12px; }
+    .day-status-icon { font-size: 14px; margin: 1px 0; }
+    .day-time { font-size: 9px; line-height: 1; color: #4b5563; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Calendar day styles */
+    .cal-present { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .cal-late { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .cal-absent { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .cal-leave { background: #ede9fe; color: #5b21b6; border: 1px solid #ddd6fe; }
+    .cal-off { background: #f3f4f6; color: #6b7280; border: 1px dashed #d1d5db; }
+    .cal-future { background: #fafafa; color: #d1d5db; border: 1px solid #f3f4f6; }
+    .cal-missing { background: #fef2f2; color: #dc2626; border: 1px dashed #fca5a5; }
+    .cal-nosign { background: #f9fafb; color: #9ca3af; }
+
+    /* Legend */
+    .legend-card { background: white; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 16px; border: 1px solid #f0f0f0; }
+    .legend-card h4 { margin: 0 0 10px 0; font-size: 13px; color: #374151; }
+    .legend-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+    .notice-card { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 10px 14px; border-radius: 8px; font-size: 12px; text-align: center; margin-bottom: 20px; }
+
+    /* Day Detail Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+    .modal-box { background: white; width: 100%; max-width: 360px; border-radius: 14px; padding: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; }
+    .modal-head h3 { margin: 0; font-size: 16px; color: #111827; }
+    .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: #6b7280; }
+    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f9fafb; font-size: 14px; }
+    .detail-label { color: #6b7280; }
+    .detail-val { font-weight: bold; color: #111827; }
+</style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav">
+        <a href="{{ url_for('mobile_attendance') }}" class="nav-btn">📱 تسجيل الحضور</a>
+        <a href="{{ url_for('mobile_records') }}" class="nav-btn">📋 سجل الحضور</a>
+        <a href="{{ url_for('mobile_calendar') }}" class="nav-btn active">📅 تقويم الحضور</a>
+        <a href="{{ url_for('mobile_payslip') }}" class="nav-btn">💰 كشف المرتب</a>
+    </div>
+
+    <div class="header-card">
+        <h1>📅 تقويم الحضور الشهري</h1>
+        <p>متابعة أيام الحضور والغياب والإجازات لشهر كامل</p>
+    </div>
+
+    <div class="emp-card">
+        <div>
+            <div class="emp-name">{{ emp.name }}</div>
+            <div class="emp-code">الكود الوظيفي: {{ emp.emp_code }}</div>
+        </div>
+        <div style="font-size:12px; color:#4b5563; text-align:left;">
+            <div>{{ emp.position or '-' }}</div>
+            <div style="color:#6b7280;">{{ emp.dept_name or '-' }}</div>
+        </div>
+    </div>
+
+    <!-- Month Navigation -->
+    <div class="month-nav-card">
+        <a href="{{ url_for('mobile_calendar', month=prev_month) }}" class="nav-arrow">← الشهر السابق</a>
+        <div class="cur-month">🗓️ {{ month }}</div>
+        <a href="{{ url_for('mobile_calendar', month=next_month) }}" class="nav-arrow">الشهر التالي →</a>
+    </div>
+
+    <!-- Calendar Card -->
+    <div class="cal-card">
+        <table class="cal-table">
+            <thead>
+                <tr>
+                    <th>السبت</th>
+                    <th>الأحد</th>
+                    <th>الإثنين</th>
+                    <th>الثلاثاء</th>
+                    <th>الأربعاء</th>
+                    <th>الخميس</th>
+                    <th>الجمعة</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for week in weeks %}
+                <tr>
+                    {% for day in week %}
+                        {% if day %}
+                        <td>
+                            <div class="cal-day cal-{{ day.status }}" onclick="showDayDetail('{{ day.date }}', '{{ day.label }}', '{{ day.cin }}', '{{ day.cout }}', '{{ day.note }}')">
+                                <span class="day-num">{{ day.day }}</span>
+                                <span class="day-status-icon">{{ day.icon }}</span>
+                                {% if day.cin %}
+                                <span class="day-time">{{ day.cin[:5] }}</span>
+                                {% else %}
+                                <span class="day-time">{{ day.label }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% else %}
+                        <td style="background:#fcfcfc;"></td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Legend Card -->
+    <div class="legend-card">
+        <h4>🎨 دليل رموز التقويم:</h4>
+        <div class="legend-grid">
+            <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span> حاضر (🟢)</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span> متأخر (🟡)</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span> غائب (⛔)</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6;"></span> إجازة (🌴)</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#9ca3af;"></span> عطلة (🛌)</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#e5e7eb;"></span> قادم (🔜)</div>
+        </div>
+    </div>
+
+    <div class="notice-card">
+        🔒 هذا التقويم خاص بحسابك فقط، ويعرض حضورك وغيابك دون إمكانية رؤية أي موظف آخر
+    </div>
+
+</div>
+
+<!-- Day Detail Modal -->
+<div class="modal-overlay" id="dayModal" onclick="closeDayDetail(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-head">
+            <h3 id="mDate">تفاصيل اليوم</h3>
+            <button class="modal-close" onclick="closeModalDirect()">&times;</button>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">الحالة:</span>
+            <span class="detail-val" id="mStatus">—</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">وقت الحضور:</span>
+            <span class="detail-val" id="mCin">—</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">وقت الانصراف:</span>
+            <span class="detail-val" id="mCout">—</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">ملاحظات:</span>
+            <span class="detail-val" id="mNote">—</span>
+        </div>
+        <button type="button" onclick="closeModalDirect()" style="width:100%; margin-top:16px; padding:10px; background:#667eea; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">إغلاق</button>
+    </div>
+</div>
+
+<script>
+function showDayDetail(date, label, cin, cout, note) {
+    document.getElementById('mDate').textContent = '📅 تاريخ: ' + date;
+    document.getElementById('mStatus').textContent = label || '—';
+    document.getElementById('mCin').textContent = cin || 'غير مسجل';
+    document.getElementById('mCout').textContent = cout || 'غير مسجل';
+    document.getElementById('mNote').textContent = note || 'لا توجد ملاحظات';
+    document.getElementById('dayModal').style.display = 'flex';
+}
+function closeModalDirect() {
+    document.getElementById('dayModal').style.display = 'none';
+}
+function closeDayDetail(e) {
+    if (e.target.id === 'dayModal') {
+        closeModalDirect();
+    }
+}
+</script>
+</body>
+</html>
+

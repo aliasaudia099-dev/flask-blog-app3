@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}سجل العمليات - {{ device.name if device else 'جميع الأجهزة' }}{% endblock %}
+{% block header %}سجل عمليات {% if device %}الجهاز: {{ device.name }}{% else %}جميع الأجهزة{% endif %}{% endblock %}
+{% block actions %}
+{% if device %}
+<a href="{{ url_for('device_detail', device_id=device.id) }}" class="btn btn-outline no-print">← الجهاز</a>
+<a href="{{ url_for('device_attendance', device_id=device.id) }}" class="btn btn-outline no-print">📋 الحضور</a>
+{% else %}
+<a href="{{ url_for('devices') }}" class="btn btn-outline no-print">← الأجهزة</a>
+{% endif %}
+<button class="btn btn-outline no-print" onclick="window.print()">🖨️ طباعة</button>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filter bar -->
+<div class="card" style="padding:14px 20px;margin-bottom:16px;">
+    <form method="GET" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        {% if not device %}
+        <div class="form-group">
+            <label>الجهاز</label>
+            <select name="device_id" class="form-control" onchange="this.form.submit()">
+                <option value="">جميع الأجهزة</option>
+                {% for d in all_devices %}
+                <option value="{{ d.id }}" {{ 'selected' if request.args.get('device_id','') == d.id|string }}>
+                    {{ d.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="form-group">
+            <label>الإجراء</label>
+            <select name="action" class="form-control">
+                <option value="">الكل</option>
+                {% for a in ['connect','disconnect','download','sync_users','apply','clear','restart','add','delete','map'] %}
+                <option value="{{ a }}" {{ 'selected' if request.args.get('action')==a }}>{{ a }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>النتيجة</label>
+            <select name="success" class="form-control">
+                <option value="">الكل</option>
+                <option value="1" {{ 'selected' if request.args.get('success')=='1' }}>نجح ✅</option>
+                <option value="0" {{ 'selected' if request.args.get('success')=='0' }}>فشل ❌</option>
+            </select>
+        </div>
+        <button class="btn btn-primary">🔍 تصفية</button>
+        <a href="{{ url_for('device_logs', device_id=device.id) if device else url_for('device_global_logs') }}"
+           class="btn btn-outline">↺ إعادة ضبط</a>
+    </form>
+</div>
+
+<!-- Stats -->
+{% set success_cnt = logs|selectattr('success','equalto',1)|list|length %}
+{% set fail_cnt = logs|selectattr('success','equalto',0)|list|length %}
+<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+    <div class="card" style="flex:1;min-width:120px;text-align:center;padding:14px;">
+        <div style="font-size:1.5rem;font-weight:700;">{{ logs|length }}</div>
+        <div style="font-size:.85rem;color:#666;">إجمالي العمليات</div>
+    </div>
+    <div class="card" style="flex:1;min-width:120px;text-align:center;padding:14px;">
+        <div style="font-size:1.5rem;font-weight:700;color:#16a34a;">{{ success_cnt }}</div>
+        <div style="font-size:.85rem;color:#666;">ناجحة</div>
+    </div>
+    <div class="card" style="flex:1;min-width:120px;text-align:center;padding:14px;">
+        <div style="font-size:1.5rem;font-weight:700;color:#dc2626;">{{ fail_cnt }}</div>
+        <div style="font-size:.85rem;color:#666;">فاشلة</div>
+    </div>
+    <div class="card" style="flex:1;min-width:120px;text-align:center;padding:14px;">
+        <div style="font-size:1.5rem;font-weight:700;color:#2563eb;">{{ logs|sum(attribute='records_count') }}</div>
+        <div style="font-size:.85rem;color:#666;">إجمالي السجلات</div>
+    </div>
+</div>
+
+<!-- Logs table -->
+<div class="card">
+    <div class="card-header"><h3>📜 سجل العمليات ({{ logs|length }})</h3></div>
+    <div class="card-body">
+        {% if logs %}
+        <div class="table-wrap">
+            <table>
+                <thead><tr>
+                    {% if not device %}<th>الجهاز</th>{% endif %}
+                    <th>التاريخ والوقت</th>
+                    <th>الإجراء</th>
+                    <th>الوصف</th>
+                    <th>السجلات</th>
+                    <th>النتيجة</th>
+                    <th>رسالة الخطأ</th>
+                </tr></thead>
+                <tbody>
+                {% for log in logs %}
+                <tr style="{{ 'background:#fff7ed;' if not log.success else '' }}">
+                    {% if not device %}
+                    <td>{{ log.device_name }}</td>
+                    {% endif %}
+                    <td style="font-size:.85rem;">{{ log.created_at }}</td>
+                    <td>
+                        {% set ac = log.action %}
+                        {% set badge = 'primary' if ac=='connect' else 'success' if ac=='download' else 'info' if ac in ('apply','sync_users') else 'danger' if ac=='clear' else 'warning' if ac=='restart' else 'secondary' %}
+                        <span class="badge badge-{{ badge }}">{{ ac }}</span>
+                    </td>
+                    <td>{{ log.description }}</td>
+                    <td class="number-cell">{{ log.records_count or 0 }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'success' if log.success else 'danger' }}">
+                            {{ 'نجح ✓' if log.success else 'فشل ✗' }}
+                        </span>
+                    </td>
+                    <td style="color:#dc2626;font-size:.8rem;">{{ log.error_message or '—' }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:40px;color:#9ca3af;">
+            <div style="font-size:2.5rem;">📋</div>
+            <h3>لا توجد عمليات مسجلة</h3>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

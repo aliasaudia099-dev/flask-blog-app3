@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% block title %}تفاصيل الجهاز - {{ device.name }}{% endblock %}
+{% block header %}لوحة الجهاز: {{ device.name }}{% endblock %}
+{% block actions %}
+<a href="{{ url_for('devices') }}" class="btn btn-outline no-print">← الأجهزة</a>
+{% if current_user.role=='admin' %}
+<a href="{{ url_for('device_edit', device_id=device.id) }}" class="btn btn-outline no-print">✏️ تعديل</a>
+{% endif %}
+<button class="btn btn-primary no-print" onclick="connectDevice()">🔗 اتصال</button>
+<button class="btn btn-success no-print" onclick="downloadAttendance()">⬇️ تحميل الحضور</button>
+{% endblock %}
+
+{% block content %}
+<!-- Status Cards -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:20px;">
+    <div class="card" style="text-align:center;padding:20px;">
+        <div style="font-size:2rem;">
+            {% if device.status=='connected' %}🟢{% elif device.status=='connection_failed' %}🔴{% else %}🟡{% endif %}
+        </div>
+        <div style="font-weight:700;font-size:1.1rem;margin-top:8px;">
+            {{ {'connected':'متصل','disconnected':'غير متصل','connection_failed':'فشل الاتصال','maintenance':'صيانة','error':'خطأ'}.get(device.status,'غير معروف') }}
+        </div>
+        <small style="color:#666;">حالة الجهاز</small>
+    </div>
+    <div class="card" style="text-align:center;padding:20px;">
+        <div style="font-size:2rem;color:#2563eb;">{{ total_records }}</div>
+        <div style="font-weight:600;margin-top:8px;">إجمالي السجلات</div>
+        <small style="color:#666;">كل بصمات الجهاز</small>
+    </div>
+    <div class="card" style="text-align:center;padding:20px;">
+        <div style="font-size:2rem;color:#f59e0b;">{{ unprocessed_count }}</div>
+        <div style="font-weight:600;margin-top:8px;">غير معالجة</div>
+        <small style="color:#666;">بانتظار التطبيق</small>
+    </div>
+    <div class="card" style="text-align:center;padding:20px;">
+        <div style="font-size:2rem;color:#16a34a;">{{ mapped_count }}</div>
+        <div style="font-weight:600;margin-top:8px;">موظفين مرتبطين</div>
+        <small style="color:#666;"><a href="{{ url_for('device_mapping', device_id=device.id) }}">عرض الربط</a></small>
+    </div>
+    <div class="card" style="text-align:center;padding:20px;">
+        <div style="font-size:2rem;color:#8b5cf6;">{{ today_count }}</div>
+        <div style="font-weight:600;margin-top:8px;">بصمات اليوم</div>
+        <small style="color:#666;">{{ now.strftime('%Y-%m-%d') }}</small>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+<!-- Device Info -->
+<div class="card">
+    <div class="card-header"><h3>📋 معلومات الجهاز</h3></div>
+    <div class="card-body">
+        <table style="width:100%;border-collapse:collapse;">
+            {% set rows = [
+                ('النوع', device.device_type or 'zkteco'),
+                ('عنوان IP', device.ip_address),
+                ('المنفذ', device.port or 4370),
+                ('مفتاح الاتصال', device.comm_key or 0),
+                ('الموقع', device.location or '-'),
+                ('الرقم التسلسلي', device.serial_number or '-'),
+                ('تاريخ الإضافة', device.created_at or '-'),
+                ('آخر مزامنة', device.last_sync or 'لم تتم بعد'),
+            ] %}
+            {% for label, val in rows %}
+            <tr style="border-bottom:1px solid #f3f4f6;">
+                <td style="padding:10px 0;color:#666;width:40%;">{{ label }}</td>
+                <td style="padding:10px 0;font-weight:600;">{{ val }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card">
+    <div class="card-header"><h3>⚡ إجراءات سريعة</h3></div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" style="flex:1" onclick="connectDevice()">
+                🔗 اتصال ومزامنة المستخدمين
+            </button>
+            <button class="btn btn-outline" style="flex:1" onclick="pingDevice()">
+                🏓 اختبار الوصول (Ping)
+            </button>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-success" style="flex:1" onclick="downloadAttendance()">
+                ⬇️ تحميل الحضور من الجهاز
+            </button>
+            <button class="btn btn-outline" style="flex:1" onclick="syncUsers()">
+                👥 مزامنة المستخدمين
+            </button>
+        </div>
+
+        {% if current_user.role=='admin' %}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-outline" style="flex:1" onclick="syncTime()">
+                🕐 مزامنة التوقيت
+            </button>
+            <button class="btn btn-warning" style="flex:1" onclick="applyMonth()">
+                📋 تطبيق على المرتبات
+            </button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid #f3f4f6;padding-top:12px;">
+            <button class="btn btn-danger" style="flex:1" onclick="clearAtt()">
+                🗑️ مسح سجلات الجهاز
+            </button>
+            <button class="btn btn-outline" style="flex:1" onclick="restartDevice()">
+                🔄 إعادة تشغيل الجهاز
+            </button>
+        </div>
+        {% endif %}
+
+        <div id="actionResult" style="display:none;padding:10px;border-radius:6px;font-size:.9rem;"></div>
+
+        <div style="border-top:1px solid #f3f4f6;padding-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+            <a href="{{ url_for('device_attendance', device_id=device.id) }}" class="btn btn-outline" style="flex:1">
+                📋 عرض سجلات الحضور
+            </a>
+            <a href="{{ url_for('device_mapping', device_id=device.id) }}" class="btn btn-outline" style="flex:1">
+                🔗 إدارة ربط الموظفين
+            </a>
+            <a href="{{ url_for('device_logs', device_id=device.id) }}" class="btn btn-outline" style="flex:1">
+                📜 سجل العمليات
+            </a>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Recent Attendance -->
+<div class="card" style="margin-top:20px;">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h3>🕒 آخر سجلات الحضور</h3>
+        <a href="{{ url_for('device_attendance', device_id=device.id) }}" class="btn btn-sm btn-outline">عرض الكل</a>
+    </div>
+    <div class="card-body">
+        {% if recent_records %}
+        <div class="table-wrap">
+            <table>
+                <thead><tr>
+                    <th>معرف الجهاز</th><th>الموظف</th><th>التاريخ</th><th>الوقت</th><th>النوع</th><th>الحالة</th>
+                </tr></thead>
+                <tbody>
+                {% for r in recent_records %}
+                <tr>
+                    <td class="number-cell">{{ r.device_uid }}</td>
+                    <td>{{ r.emp_name or '<span style="color:#ef4444">غير مرتبط</span>'|safe }}</td>
+                    <td>{{ r.check_date }}</td>
+                    <td class="number-cell">{{ r.check_time }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'primary' if r.check_type=='check_in' else 'info' }}">
+                            {{ 'دخول' if r.check_type=='check_in' else 'خروج' }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ 'success' if r.processed==2 else 'warning' if r.processed==1 else 'secondary' }}">
+                            {{ 'مطبق' if r.processed==2 else 'معالج' if r.processed==1 else 'جديد' }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:30px;color:#9ca3af;">
+            <div style="font-size:2.5rem;">📭</div>
+            <p>لا توجد سجلات بعد — قم بتحميل الحضور من الجهاز</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Logs -->
+<div class="card" style="margin-top:20px;">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h3>📜 آخر العمليات</h3>
+        <a href="{{ url_for('device_logs', device_id=device.id) }}" class="btn btn-sm btn-outline">الكل</a>
+    </div>
+    <div class="card-body">
+        {% if recent_logs %}
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>التاريخ</th><th>الإجراء</th><th>الوصف</th><th>السجلات</th><th>النتيجة</th></tr></thead>
+                <tbody>
+                {% for log in recent_logs %}
+                <tr>
+                    <td>{{ log.created_at }}</td>
+                    <td><span class="badge badge-info">{{ log.action }}</span></td>
+                    <td>{{ log.description }}</td>
+                    <td class="number-cell">{{ log.records_count or 0 }}</td>
+                    <td><span class="badge badge-{{ 'success' if log.success else 'danger' }}">{{ 'نجح' if log.success else 'فشل' }}</span></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:20px;color:#9ca3af;">لا توجد عمليات مسجلة</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var DEVICE_ID = {{ device.id }};
+var CSRF = '{{ csrf_token() }}';
+
+function showResult(msg, ok){
+    var box = document.getElementById('actionResult');
+    box.style.display='block';
+    box.style.background = ok ? '#dcfce7' : '#fee2e2';
+    box.style.color = ok ? '#166534' : '#991b1b';
+    box.textContent = (ok ? '✅ ' : '❌ ') + msg;
+    setTimeout(()=>box.style.display='none', 5000);
+}
+
+function connectDevice(){
+    if(!confirm('هل تريد الاتصال بالجهاز ومزامنة المستخدمين؟')) return;
+    showResult('⏳ جارٍ الاتصال...', true);
+    fetch('/device/'+DEVICE_ID+'/connect',{method:'POST',headers:{'X-CSRFToken':CSRF}})
+    .then(r=>r.json()).then(d=>{
+        showResult(d.ok ? 'تم الاتصال. مزامنة '+d.users_synced+' مستخدم' : d.error, d.ok);
+        if(d.ok) location.reload();
+    }).catch(()=>showResult('فشل الاتصال بالخادم', false));
+}
+
+function pingDevice(){
+    var ip = '{{ device.ip_address }}';
+    var port = '{{ device.port or 4370 }}';
+    showResult('⏳ جارٍ الاختبار...', true);
+    fetch('/device/test-ping',{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':CSRF},
+        body:'ip='+ip+'&port='+port
+    }).then(r=>r.json()).then(d=>showResult(d.message, d.ok))
+    .catch(()=>showResult('فشل في الاتصال', false));
+}
+
+function downloadAttendance(){
+    var month = prompt('أدخل الشهر (YYYY-MM):','{{ now.strftime("%Y-%m") }}');
+    if(!month) return;
+    showResult('⏳ جارٍ التحميل...', true);
+    fetch('/device/'+DEVICE_ID+'/download-attendance',{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':CSRF},
+        body:'month='+month
+    }).then(r=>r.json()).then(d=>{
+        showResult(d.ok ? d.message : d.error, d.ok);
+        if(d.ok) setTimeout(()=>location.reload(), 1500);
+    }).catch(()=>showResult('فشل الاتصال', false));
+}
+
+function syncUsers(){
+    if(!confirm('مزامنة المستخدمين من الجهاز؟')) return;
+    showResult('⏳ جارٍ المزامنة...', true);
+    fetch('/device/'+DEVICE_ID+'/sync-users',{method:'POST',headers:{'X-CSRFToken':CSRF}})
+    .then(r=>r.json()).then(d=>{
+        showResult(d.ok ? 'مزامنة '+d.total+' مستخدم (مرتبط: '+d.synced+', جديد: '+d.created+')' : d.error, d.ok);
+        if(d.ok) location.reload();
+    }).catch(()=>showResult('فشل', false));
+}
+
+function syncTime(){
+    if(!confirm('مزامنة توقيت الجهاز مع الخادم الآن؟')) return;
+    fetch('/device/'+DEVICE_ID+'/sync-time',{method:'POST',headers:{'X-CSRFToken':CSRF}})
+    .then(r=>r.json()).then(d=>showResult(d.message||d.error, d.ok))
+    .catch(()=>showResult('فشل', false));
+}
+
+function applyMonth(){
+    var month = prompt('شهر التطبيق (YYYY-MM):','{{ now.strftime("%Y-%m") }}');
+    if(!month) return;
+    var overwrite = confirm('هل تريد الكتابة فوق السجلات الموجودة؟');
+    fetch('/device/'+DEVICE_ID+'/apply-attendance',{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':CSRF},
+        body:'month='+month+'&overwrite='+(overwrite?'true':'false')
+    }).then(r=>r.json()).then(d=>showResult(d.ok?d.message:d.error, d.ok))
+    .catch(()=>showResult('فشل', false));
+}
+
+function clearAtt(){
+    if(!confirm('تحذير: سيتم مسح جميع سجلات الحضور من الجهاز نهائياً. هل أنت متأكد؟')) return;
+    if(!confirm('هذا الإجراء لا يمكن التراجع عنه. تأكيد المسح؟')) return;
+    fetch('/device/'+DEVICE_ID+'/clear-attendance',{method:'POST',headers:{'X-CSRFToken':CSRF}})
+    .then(r=>r.json()).then(d=>showResult(d.message||d.error, d.ok))
+    .catch(()=>showResult('فشل', false));
+}
+
+function restartDevice(){
+    if(!confirm('إعادة تشغيل الجهاز؟')) return;
+    fetch('/device/'+DEVICE_ID+'/restart',{method:'POST',headers:{'X-CSRFToken':CSRF}})
+    .then(r=>r.json()).then(d=>showResult(d.message||d.error, d.ok))
+    .catch(()=>showResult('فشل', false));
+}
+</script>
+{% endblock %}
+
