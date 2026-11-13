@@ -2556,12 +2556,11 @@ def _open_browser(port):
         pass
 
 def run_server():
-    # التشغيل الآمن: debug معطّل في الإنتاج
     debug = os.environ.get('PAYROLL_DEBUG', '0') == '1'
     port = int(os.environ.get('PORT', 5003))
     if os.environ.get('PAYROLL_NO_BROWSER', '0') != '1':
         threading.Thread(target=_open_browser, args=(port,), daemon=True).start()
-    app.run(debug=debug, host='127.0.0.1', port=port, threaded=True)
+    app.run(debug=debug, host='0.0.0.0', port=port, threaded=True)  # ← 0.0.0.0 وليس 127.0.0.1
 
 if __name__ == '__main__':
     run_server()
