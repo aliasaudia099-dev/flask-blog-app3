@@ -1,65 +1,22 @@
-# docker-compose.yml - نظام المرتبات الشامل (Payroll System)
-# نسخة معدلة للعمل على EasyPanel
-
 services:
-  payroll-app:
-    # استخدام صورة Python جاهزة بدلاً من بناء صورة جديدة
+  flask-blog3:
     image: python:3.11-slim
-    restart: unless-stopped
-    
-    # في EasyPanel، لا نستخدم ports. يتم التوجيه عبر "Domains"
-    # ports:
-    #   - "${PORT:-5003}:5003"
-    
-    environment:
-      - PORT=5003
-      - HOST=0.0.0.0
-      - PAYROLL_DEBUG=${PAYROLL_DEBUG:-0}
-      - PAYROLL_NO_BROWSER=1
-      - PAYROLL_LICENSE_CHECK=${PAYROLL_LICENSE_CHECK:-1}
-      - TZ=${TZ:-Africa/Cairo}
-      # تثبيت الاعتماديات وتشغيل التطبيق
-      - PYTHONUNBUFFERED=1
-
-    # أمر التشغيل: تثبيت الحزم ثم تشغيل التطبيق
+    volumes:
+      - ./:/app
+      - blog-data3:/data
+      - sales-db3:/app-data
+    working_dir: /app
     command: >
       sh -c "pip install --no-cache-dir -r requirements.txt &&
              python app.py"
-    
-    # التخزين الدائم (Volumes)
-    volumes:
-      # قاعدة البيانات
-      - payroll-db:/app/data
-      # النسخ الاحتياطية
-      - payroll-backups:/app/backups
-      # مفتاح الترخيص
-      - ./license.key:/app/license.key
-      # المفتاح السري
-      - ./.secret_key:/app/.secret_key
-      # السجلات
-      - payroll-logs:/app/logs
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+      - SALES_DATA_DIR=/app-data
 
-    # فحص الحالة (Healthcheck)
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5003/login"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-
-    # الشبكة الافتراضية
-    networks:
-      - payroll-net
-
-# تعريف الـ Volumes
 volumes:
-  payroll-db:
+  blog-data3:
     driver: local
-  payroll-backups:
+  sales-db3:
     driver: local
-  payroll-logs:
-    driver: local
-
-networks:
-  payroll-net:
-    driver: bridge
