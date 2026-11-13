@@ -1,23 +1,62 @@
-services:
-  flask-blog3:
-    image: python:3.11-slim
-    volumes:
-      - ./:/app
-      - app4-data:/data
-    working_dir: /app
-    command: >
-      sh -c "mkdir -p /app/static/fonts &&
-             [ -f /app/static/fonts/Amiri-Regular.ttf ] || python -c \"import urllib.request; urllib.request.urlretrieve('https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Regular.ttf', '/app/static/fonts/Amiri-Regular.ttf')\" &&
-             apt-get update && apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 shared-mime-info &&
-             pip install --no-cache-dir -r requirements.txt &&
-             python app.py"
-    restart: unless-stopped
-    environment:
-      - FLASK_ENV=development
-      - PYTHONUNBUFFERED=1
-      - SALES_DATA_DIR=/data
-      - PORT=5003
+# ============================================================
+# docker-compose.yml - نظام المرتبات الشامل (Payroll System)
+# ============================================================
 
-volumes:
-  app4-data:
-    driver: local
+version: '3.8'
+
+services:
+  payroll-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payroll-system
+    restart: unless-stopped
+    
+    # Port mapping: host:container
+    ports:
+      - "${PORT:-5003}:5003"
+    
+    # Environment variables
+    environment:
+      - PORT=5003
+      - HOST=0.0.0.0
+      - PAYROLL_DEBUG=${PAYROLL_DEBUG:-0}
+      - PAYROLL_NO_BROWSER=1
+      - PAYROLL_LICENSE_CHECK=${PAYROLL_LICENSE_CHECK:-1}
+      - TZ=${TZ:-Africa/Cairo}
+    
+    # Persistent storage volumes
+    volumes:
+      # Database file persistence
+      - ./payroll.db:/app/payroll.db
+      # Automated & manual database backups
+      - ./backups:/app/backups
+      # Software license key file
+      - ./license.key:/app/license.key
+      # Application persistent secret key
+      - ./.secret_key:/app/.secret_key
+      # Application logs
+      - ./logs:/app/logs
+
+    # Health check to ensure service is responding
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5003/login"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+    # Default bridge network
+    networks:
+      - payroll-net
+
+    # NOTE for ZKTeco Biometric Devices on local physical LAN:
+    # On Linux Docker hosts, if you encounter UDP routing issues communicating
+    # with the ZKTeco device (e.g. 192.168.1.201:4370), you can uncomment:
+    # network_mode: "host"
+    # and comment out 'ports' and 'networks' sections above.
+
+networks:
+  payroll-net:
+    driver: bridge
+
