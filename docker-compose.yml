@@ -1,22 +1,16 @@
-# ============================================================
 # docker-compose.yml - نظام المرتبات الشامل (Payroll System)
-# ============================================================
-
-version: '3.8'
+# نسخة معدلة للعمل على EasyPanel
 
 services:
   payroll-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: payroll-system
+    # استخدام صورة Python جاهزة بدلاً من بناء صورة جديدة
+    image: python:3.11-slim
     restart: unless-stopped
     
-    # Port mapping: host:container
-    ports:
-      - "${PORT:-5003}:5003"
+    # في EasyPanel، لا نستخدم ports. يتم التوجيه عبر "Domains"
+    # ports:
+    #   - "${PORT:-5003}:5003"
     
-    # Environment variables
     environment:
       - PORT=5003
       - HOST=0.0.0.0
@@ -24,21 +18,28 @@ services:
       - PAYROLL_NO_BROWSER=1
       - PAYROLL_LICENSE_CHECK=${PAYROLL_LICENSE_CHECK:-1}
       - TZ=${TZ:-Africa/Cairo}
-    
-    # Persistent storage volumes
-    volumes:
-      # Database file persistence
-      - ./payroll.db:/app/payroll.db
-      # Automated & manual database backups
-      - ./backups:/app/backups
-      # Software license key file
-      - ./license.key:/app/license.key
-      # Application persistent secret key
-      - ./.secret_key:/app/.secret_key
-      # Application logs
-      - ./logs:/app/logs
+      # تثبيت الاعتماديات وتشغيل التطبيق
+      - PYTHONUNBUFFERED=1
 
-    # Health check to ensure service is responding
+    # أمر التشغيل: تثبيت الحزم ثم تشغيل التطبيق
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt &&
+             python app.py"
+    
+    # التخزين الدائم (Volumes)
+    volumes:
+      # قاعدة البيانات
+      - payroll-db:/app/data
+      # النسخ الاحتياطية
+      - payroll-backups:/app/backups
+      # مفتاح الترخيص
+      - ./license.key:/app/license.key
+      # المفتاح السري
+      - ./.secret_key:/app/.secret_key
+      # السجلات
+      - payroll-logs:/app/logs
+
+    # فحص الحالة (Healthcheck)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5003/login"]
       interval: 30s
@@ -46,17 +47,19 @@ services:
       retries: 3
       start_period: 15s
 
-    # Default bridge network
+    # الشبكة الافتراضية
     networks:
       - payroll-net
 
-    # NOTE for ZKTeco Biometric Devices on local physical LAN:
-    # On Linux Docker hosts, if you encounter UDP routing issues communicating
-    # with the ZKTeco device (e.g. 192.168.1.201:4370), you can uncomment:
-    # network_mode: "host"
-    # and comment out 'ports' and 'networks' sections above.
+# تعريف الـ Volumes
+volumes:
+  payroll-db:
+    driver: local
+  payroll-backups:
+    driver: local
+  payroll-logs:
+    driver: local
 
 networks:
   payroll-net:
     driver: bridge
-
