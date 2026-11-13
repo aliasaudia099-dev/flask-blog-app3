@@ -1,0 +1,23 @@
+services:
+  flask-blog3:
+    image: python:3.11-slim
+    volumes:
+      - ./:/app
+      - app4-data:/data
+    working_dir: /app
+    command: >
+      sh -c "mkdir -p /app/static/fonts &&
+             [ -f /app/static/fonts/Amiri-Regular.ttf ] || python -c \"import urllib.request; urllib.request.urlretrieve('https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Regular.ttf', '/app/static/fonts/Amiri-Regular.ttf')\" &&
+             apt-get update && apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 shared-mime-info &&
+             pip install --no-cache-dir -r requirements.txt &&
+             python app.py"
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+      - SALES_DATA_DIR=/data
+      - PORT=5003
+
+volumes:
+  app4-data:
+    driver: local
