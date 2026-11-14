@@ -13,7 +13,9 @@ if getattr(sys, 'frozen', False):
 else:
     _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DB_PATH = os.path.join(_BASE_DIR, 'payroll.db')
+_DATA_DIR = os.environ.get('SALES_DATA_DIR') or _BASE_DIR
+os.makedirs(_DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(_DATA_DIR, 'payroll.db')
 
 class Database:
     def __init__(self):
