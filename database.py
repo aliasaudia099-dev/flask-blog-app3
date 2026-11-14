@@ -8,9 +8,12 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # في وضع PyInstaller: قاعدة البيانات تكون بجوار الـ exe (وليس في مجلد التحميل المؤقت)
-_DATA_DIR = os.environ.get('SALES_DATA_DIR') or _BASE_DIR
-os.makedirs(_DATA_DIR, exist_ok=True)
-DB_PATH = os.path.join(_DATA_DIR, 'sales.db')
+if getattr(sys, 'frozen', False):
+    _BASE_DIR = os.path.dirname(sys.executable)
+else:
+    _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+DB_PATH = os.path.join(_BASE_DIR, 'payroll.db')
 
 class Database:
     def __init__(self):
